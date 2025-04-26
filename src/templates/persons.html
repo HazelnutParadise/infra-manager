@@ -1,0 +1,22 @@
+{{ define "content" }}
+<h1>人員清單</h1>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>名稱</th>
+            <th>狀態</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{ range .Persons }}
+        <tr>
+            <td>{{ .ID }}</td>
+            <td>{{ .Name }}</td>
+            <td>{{ if .Disabled }}停權{{ else }}正常{{ end }}</td>
+        </tr>
+        {{ end }}
+    </tbody>
+</table>
+<button class="btn btn-primary">新增人員</button>
+{{ end }}

@@ -1,46 +1,15 @@
 version: '3.8'
-
 services:
-  api:
-    build:
-      context: ./api
-    dockerfile: Dockerfile
+  infra:
+    build: ./api
     ports:
-      - "1452:1452"
+      - "1452:1452" # API proxy
+      - "1453:1453" # 管理介面
     environment:
-      - ADMIN_PASSWORD=your_admin_password_here
-      - DB_PATH=/data/infra.db
-    depends_on:
-      - db
-    networks:
-      - infra_net
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD} # 透過 env 設定 admin 密碼
+      - DATABASE_FILE=/data/infra.db
     volumes:
-      - ./data:/data
+      - infra-data:/data
 
-  admin:
-    build:
-      context: ./admin
-    dockerfile: Dockerfile
-    ports:
-      - "1453:1453"
-    environment:
-      - ADMIN_PASSWORD=your_admin_password_here
-      - DB_PATH=/data/infra.db
-    depends_on:
-      - db
-    networks:
-      - infra_net
-    volumes:
-      - ./data:/data
-
-  db:
-    image: nouchka/sqlite3
-    container_name: infra_sqlite
-    networks:
-      - infra_net
-    volumes:
-      - ./data:/data
-
-networks:
-  infra_net:
-    driver: bridge
+volumes:
+  infra-data:

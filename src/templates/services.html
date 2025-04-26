@@ -1,0 +1,22 @@
+{{ define "content" }}
+<h1>服務清單</h1>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>名稱</th>
+            <th>狀態</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{ range .Services }}
+        <tr>
+            <td>{{ .ID }}</td>
+            <td>{{ .Name }}</td>
+            <td>{{ if .Disabled }}停用{{ else }}正常{{ end }}</td>
+        </tr>
+        {{ end }}
+    </tbody>
+</table>
+<button class="btn btn-primary">新增服務</button>
+{{ end }}
