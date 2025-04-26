@@ -1,2 +1,3 @@
 *.exe
 /src/data
+*.db

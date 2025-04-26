@@ -47,7 +47,9 @@ func GenerateToken(length int) string {
 // Login 處理登入請求
 func (h *AdminHandler) Login(c *gin.Context) {
 	if c.Request.Method == http.MethodGet {
-		c.HTML(http.StatusOK, "login.html", nil)
+		c.HTML(http.StatusOK, "login.html", gin.H{
+			"title": "登入",
+		})
 		return
 	}
 
@@ -58,6 +60,7 @@ func (h *AdminHandler) Login(c *gin.Context) {
 
 	if err := c.ShouldBind(&form); err != nil {
 		c.HTML(http.StatusBadRequest, "login.html", gin.H{
+			"title": "登入",
 			"error": "請提供用戶名和密碼",
 		})
 		return
@@ -66,6 +69,7 @@ func (h *AdminHandler) Login(c *gin.Context) {
 	var admin models.Admin
 	if err := h.DB.Where("username = ?", form.Username).First(&admin).Error; err != nil {
 		c.HTML(http.StatusUnauthorized, "login.html", gin.H{
+			"title": "登入",
 			"error": "用戶名或密碼錯誤",
 		})
 		return
@@ -74,6 +78,7 @@ func (h *AdminHandler) Login(c *gin.Context) {
 	// 檢查密碼是否匹配
 	if admin.PasswordHash != HashPassword(form.Password) {
 		c.HTML(http.StatusUnauthorized, "login.html", gin.H{
+			"title": "登入",
 			"error": "用戶名或密碼錯誤",
 		})
 		return
@@ -127,6 +132,8 @@ func (h *AdminHandler) Dashboard(c *gin.Context) {
 		Scan(&serviceUsage)
 
 	c.HTML(http.StatusOK, "dashboard.html", gin.H{
+		"title":        "儀表板",
+		"active":       "dashboard",
 		"personCount":  personCount,
 		"serviceCount": serviceCount,
 		"tokenCount":   tokenCount,
@@ -141,6 +148,8 @@ func (h *AdminHandler) ListPersons(c *gin.Context) {
 	h.DB.Find(&persons)
 
 	c.HTML(http.StatusOK, "persons.html", gin.H{
+		"title":   "人員管理",
+		"active":  "persons",
 		"persons": persons,
 	})
 }
@@ -149,6 +158,8 @@ func (h *AdminHandler) ListPersons(c *gin.Context) {
 func (h *AdminHandler) CreatePerson(c *gin.Context) {
 	if c.Request.Method == http.MethodGet {
 		c.HTML(http.StatusOK, "person_form.html", gin.H{
+			"title":  "新增人員",
+			"active": "persons",
 			"action": "create",
 		})
 		return
@@ -162,6 +173,8 @@ func (h *AdminHandler) CreatePerson(c *gin.Context) {
 
 	if err := c.ShouldBind(&form); err != nil {
 		c.HTML(http.StatusBadRequest, "person_form.html", gin.H{
+			"title":  "新增人員",
+			"active": "persons",
 			"error":  "表單數據無效",
 			"action": "create",
 		})
@@ -176,6 +189,8 @@ func (h *AdminHandler) CreatePerson(c *gin.Context) {
 
 	if err := h.DB.Create(&person).Error; err != nil {
 		c.HTML(http.StatusInternalServerError, "person_form.html", gin.H{
+			"title":  "新增人員",
+			"active": "persons",
 			"error":  "創建人員失敗: " + err.Error(),
 			"action": "create",
 			"person": person,
@@ -192,6 +207,7 @@ func (h *AdminHandler) UpdatePerson(c *gin.Context) {
 	personID, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"title": "更新人員",
 			"error": "無效的人員ID",
 		})
 		return
@@ -200,6 +216,7 @@ func (h *AdminHandler) UpdatePerson(c *gin.Context) {
 	var person models.Person
 	if err := h.DB.First(&person, personID).Error; err != nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"title": "更新人員",
 			"error": "找不到指定的人員",
 		})
 		return
@@ -207,6 +224,8 @@ func (h *AdminHandler) UpdatePerson(c *gin.Context) {
 
 	if c.Request.Method == http.MethodGet {
 		c.HTML(http.StatusOK, "person_form.html", gin.H{
+			"title":  "更新人員",
+			"active": "persons",
 			"action": "update",
 			"person": person,
 		})
@@ -221,6 +240,8 @@ func (h *AdminHandler) UpdatePerson(c *gin.Context) {
 
 	if err := c.ShouldBind(&form); err != nil {
 		c.HTML(http.StatusBadRequest, "person_form.html", gin.H{
+			"title":  "更新人員",
+			"active": "persons",
 			"error":  "表單數據無效",
 			"action": "update",
 			"person": person,
@@ -234,6 +255,8 @@ func (h *AdminHandler) UpdatePerson(c *gin.Context) {
 
 	if err := h.DB.Save(&person).Error; err != nil {
 		c.HTML(http.StatusInternalServerError, "person_form.html", gin.H{
+			"title":  "更新人員",
+			"active": "persons",
 			"error":  "更新人員失敗: " + err.Error(),
 			"action": "update",
 			"person": person,
@@ -267,6 +290,8 @@ func (h *AdminHandler) ListServices(c *gin.Context) {
 	h.DB.Find(&services)
 
 	c.HTML(http.StatusOK, "services.html", gin.H{
+		"title":    "服務管理",
+		"active":   "services",
 		"services": services,
 	})
 }
@@ -275,6 +300,8 @@ func (h *AdminHandler) ListServices(c *gin.Context) {
 func (h *AdminHandler) CreateService(c *gin.Context) {
 	if c.Request.Method == http.MethodGet {
 		c.HTML(http.StatusOK, "service_form.html", gin.H{
+			"title":  "新增服務",
+			"active": "services",
 			"action": "create",
 		})
 		return
@@ -289,6 +316,8 @@ func (h *AdminHandler) CreateService(c *gin.Context) {
 
 	if err := c.ShouldBind(&form); err != nil {
 		c.HTML(http.StatusBadRequest, "service_form.html", gin.H{
+			"title":  "新增服務",
+			"active": "services",
 			"error":  "表單數據無效",
 			"action": "create",
 		})
@@ -304,6 +333,8 @@ func (h *AdminHandler) CreateService(c *gin.Context) {
 
 	if err := h.DB.Create(&service).Error; err != nil {
 		c.HTML(http.StatusInternalServerError, "service_form.html", gin.H{
+			"title":   "新增服務",
+			"active":  "services",
 			"error":   "創建服務失敗: " + err.Error(),
 			"action":  "create",
 			"service": service,
@@ -320,6 +351,7 @@ func (h *AdminHandler) UpdateService(c *gin.Context) {
 	serviceID, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"title": "更新服務",
 			"error": "無效的服務ID",
 		})
 		return
@@ -328,6 +360,7 @@ func (h *AdminHandler) UpdateService(c *gin.Context) {
 	var service models.Service
 	if err := h.DB.First(&service, serviceID).Error; err != nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"title": "更新服務",
 			"error": "找不到指定的服務",
 		})
 		return
@@ -335,6 +368,8 @@ func (h *AdminHandler) UpdateService(c *gin.Context) {
 
 	if c.Request.Method == http.MethodGet {
 		c.HTML(http.StatusOK, "service_form.html", gin.H{
+			"title":   "更新服務",
+			"active":  "services",
 			"action":  "update",
 			"service": service,
 		})
@@ -350,6 +385,8 @@ func (h *AdminHandler) UpdateService(c *gin.Context) {
 
 	if err := c.ShouldBind(&form); err != nil {
 		c.HTML(http.StatusBadRequest, "service_form.html", gin.H{
+			"title":   "更新服務",
+			"active":  "services",
 			"error":   "表單數據無效",
 			"action":  "update",
 			"service": service,
@@ -364,6 +401,8 @@ func (h *AdminHandler) UpdateService(c *gin.Context) {
 
 	if err := h.DB.Save(&service).Error; err != nil {
 		c.HTML(http.StatusInternalServerError, "service_form.html", gin.H{
+			"title":   "更新服務",
+			"active":  "services",
 			"error":   "更新服務失敗: " + err.Error(),
 			"action":  "update",
 			"service": service,
@@ -397,6 +436,8 @@ func (h *AdminHandler) ListTokens(c *gin.Context) {
 	h.DB.Preload("Person").Preload("Service").Find(&tokens)
 
 	c.HTML(http.StatusOK, "tokens.html", gin.H{
+		"title":  "令牌管理",
+		"active": "tokens",
 		"tokens": tokens,
 	})
 }
@@ -410,6 +451,8 @@ func (h *AdminHandler) CreateToken(c *gin.Context) {
 		h.DB.Find(&services)
 
 		c.HTML(http.StatusOK, "token_form.html", gin.H{
+			"title":    "新增令牌",
+			"active":   "tokens",
 			"action":   "create",
 			"persons":  persons,
 			"services": services,
@@ -431,6 +474,8 @@ func (h *AdminHandler) CreateToken(c *gin.Context) {
 		h.DB.Find(&services)
 
 		c.HTML(http.StatusBadRequest, "token_form.html", gin.H{
+			"title":    "新增令牌",
+			"active":   "tokens",
 			"error":    "表單數據無效: " + err.Error(),
 			"action":   "create",
 			"persons":  persons,
@@ -461,7 +506,9 @@ func (h *AdminHandler) CreateToken(c *gin.Context) {
 		}
 		if err := h.DB.Create(&permission).Error; err != nil {
 			c.HTML(http.StatusInternalServerError, "token_form.html", gin.H{
-				"error": "授予權限失敗: " + err.Error(),
+				"title":  "新增令牌",
+				"active": "tokens",
+				"error":  "授予權限失敗: " + err.Error(),
 			})
 			return
 		}
@@ -479,6 +526,8 @@ func (h *AdminHandler) CreateToken(c *gin.Context) {
 
 	if err := h.DB.Create(&token).Error; err != nil {
 		c.HTML(http.StatusInternalServerError, "token_form.html", gin.H{
+			"title":  "新增令牌",
+			"active": "tokens",
 			"error":  "創建令牌失敗: " + err.Error(),
 			"action": "create",
 		})
@@ -494,6 +543,7 @@ func (h *AdminHandler) UpdateToken(c *gin.Context) {
 	tokenID, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"title": "更新令牌",
 			"error": "無效的令牌ID",
 		})
 		return
@@ -502,6 +552,7 @@ func (h *AdminHandler) UpdateToken(c *gin.Context) {
 	var token models.Token
 	if err := h.DB.Preload("Person").Preload("Service").First(&token, tokenID).Error; err != nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"title": "更新令牌",
 			"error": "找不到指定的令牌",
 		})
 		return
@@ -514,6 +565,8 @@ func (h *AdminHandler) UpdateToken(c *gin.Context) {
 		h.DB.Find(&services)
 
 		c.HTML(http.StatusOK, "token_form.html", gin.H{
+			"title":    "更新令牌",
+			"active":   "tokens",
 			"action":   "update",
 			"token":    token,
 			"persons":  persons,
@@ -536,6 +589,8 @@ func (h *AdminHandler) UpdateToken(c *gin.Context) {
 		h.DB.Find(&services)
 
 		c.HTML(http.StatusBadRequest, "token_form.html", gin.H{
+			"title":    "更新令牌",
+			"active":   "tokens",
 			"error":    "表單數據無效",
 			"action":   "update",
 			"token":    token,
@@ -567,7 +622,9 @@ func (h *AdminHandler) UpdateToken(c *gin.Context) {
 		}
 		if err := h.DB.Create(&permission).Error; err != nil {
 			c.HTML(http.StatusInternalServerError, "token_form.html", gin.H{
-				"error": "授予權限失敗: " + err.Error(),
+				"title":  "更新令牌",
+				"active": "tokens",
+				"error":  "授予權限失敗: " + err.Error(),
 			})
 			return
 		}
@@ -580,6 +637,8 @@ func (h *AdminHandler) UpdateToken(c *gin.Context) {
 
 	if err := h.DB.Save(&token).Error; err != nil {
 		c.HTML(http.StatusInternalServerError, "token_form.html", gin.H{
+			"title":  "更新令牌",
+			"active": "tokens",
 			"error":  "更新令牌失敗: " + err.Error(),
 			"action": "update",
 			"token":  token,
@@ -613,6 +672,8 @@ func (h *AdminHandler) ListPermissions(c *gin.Context) {
 	h.DB.Preload("Person").Preload("Service").Find(&permissions)
 
 	c.HTML(http.StatusOK, "permissions.html", gin.H{
+		"title":       "權限管理",
+		"active":      "permissions",
 		"permissions": permissions,
 	})
 }
@@ -626,6 +687,8 @@ func (h *AdminHandler) CreatePermission(c *gin.Context) {
 		h.DB.Find(&services)
 
 		c.HTML(http.StatusOK, "permission_form.html", gin.H{
+			"title":    "新增權限",
+			"active":   "permissions",
 			"action":   "create",
 			"persons":  persons,
 			"services": services,
@@ -645,6 +708,8 @@ func (h *AdminHandler) CreatePermission(c *gin.Context) {
 		h.DB.Find(&services)
 
 		c.HTML(http.StatusBadRequest, "permission_form.html", gin.H{
+			"title":    "新增權限",
+			"active":   "permissions",
 			"error":    "表單數據無效",
 			"action":   "create",
 			"persons":  persons,
@@ -669,6 +734,8 @@ func (h *AdminHandler) CreatePermission(c *gin.Context) {
 	var existingPermission models.Permission
 	if err := h.DB.Where("person_id = ? AND service_id = ?", form.PersonID, form.ServiceID).First(&existingPermission).Error; err == nil {
 		c.HTML(http.StatusBadRequest, "permission_form.html", gin.H{
+			"title":  "新增權限",
+			"active": "permissions",
 			"error":  "該權限已存在",
 			"action": "create",
 		})
@@ -682,6 +749,8 @@ func (h *AdminHandler) CreatePermission(c *gin.Context) {
 
 	if err := h.DB.Create(&permission).Error; err != nil {
 		c.HTML(http.StatusInternalServerError, "permission_form.html", gin.H{
+			"title":  "新增權限",
+			"active": "permissions",
 			"error":  "創建權限失敗: " + err.Error(),
 			"action": "create",
 		})
