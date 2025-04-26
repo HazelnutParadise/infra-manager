@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"path"
 
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
@@ -24,8 +25,16 @@ func initDB(path string) {
 func main() {
 	// 讀 env
 	dbFile := os.Getenv("DATABASE_FILE")
+
 	if dbFile == "" {
-		dbFile = "infra.db"
+		dbFile = path.Join("data", "infra.db")
+	}
+	if _, err := os.Stat(dbFile); err != nil {
+		if os.IsNotExist(err) {
+			os.MkdirAll(path.Dir(dbFile), os.ModePerm)
+		} else {
+			log.Fatal("failed to create db dir:", err)
+		}
 	}
 	initDB(dbFile)
 

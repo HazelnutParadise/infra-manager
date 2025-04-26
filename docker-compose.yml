@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   infra:
-    build: ./api
+    build: .
     ports:
       - "1452:1452" # API proxy
       - "1453:1453" # 管理介面
