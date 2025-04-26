@@ -14,7 +14,7 @@
 
 - 前端：HTML + CSS + JS + Bootstrap
 - 後端：Gin + Gorm
-- 資料庫：SQLite3
+- 資料庫：SQLite3("github.com/glebarez/sqlite"驅動)
 - 部署：Docker + Docker Compose
 
 ## 對應關係
