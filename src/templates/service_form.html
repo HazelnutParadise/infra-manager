@@ -1,0 +1,48 @@
+{{define "content"}}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">{{if eq .action "create"}}新增服務{{else}}編輯服務{{end}}</h1>
+</div>
+
+{{if .error}}
+<div class="alert alert-danger" role="alert">
+    {{.error}}
+</div>
+{{end}}
+
+<div class="row">
+    <div class="col-md-6">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="name" class="form-label">名稱</label>
+                <input type="text" class="form-control" id="name" name="name" required
+                    value="{{if .service}}{{.service.Name}}{{end}}">
+                <div class="form-text">名稱只能包含字母、數字、連字符和底線，用於在API中識別服務</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="url" class="form-label">URL</label>
+                <input type="url" class="form-control" id="url" name="url" required
+                    value="{{if .service}}{{.service.URL}}{{end}}" placeholder="https://example.com">
+                <div class="form-text">目標服務的基礎URL，請求會被轉發到此地址</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="description" class="form-label">描述</label>
+                <textarea class="form-control" id="description" name="description"
+                    rows="3">{{if .service}}{{.service.Description}}{{end}}</textarea>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="active" name="active" value="true" {{if or (not
+                    .service) (.service.IsActive)}}checked{{end}}>
+                <label class="form-check-label" for="active">啟用</label>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex">
+                <button type="submit" class="btn btn-primary">保存</button>
+                <a href="/admin/services" class="btn btn-outline-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{{end}}

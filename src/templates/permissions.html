@@ -1,0 +1,142 @@
+{{define "content"}}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">權限管理</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="/admin/permissions/create" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-plus"></i> 新增權限
+        </a>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>人員</th>
+                <th>服務</th>
+                <th>創建時間</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .permissions}}
+            <tr>
+                <td>{{.ID}}</td>
+                <td>{{.Person.Name}}</td>
+                <td>{{.Service.Name}}</td>
+                <td>{{.CreatedAt.Format "2006-01-02 15:04:05"}}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger delete-permission" data-id="{{.ID}}"
+                        data-person="{{.Person.Name}}" data-service="{{.Service.Name}}">
+                        <i class="bi bi-trash"></i> 刪除
+                    </button>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+<!-- 刪除確認對話框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">確認刪除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>確定要刪除 <span id="personName"></span> 訪問 <span id="serviceName"></span> 的權限嗎？</p>
+                <p class="text-danger">刪除後，該人員將無法訪問此服務，相關令牌也將失效！</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">確定刪除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增權限表單對話框 -->
+<div class="modal fade" id="permissionFormModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="permissionForm" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">新增權限</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="person_id" class="form-label">人員</label>
+                        <select class="form-select" id="person_id" name="person_id" required>
+                            <option value="">請選擇人員</option>
+                            {{range .persons}}
+                            <option value="{{.ID}}">{{.Name}} ({{.Email}})</option>
+                            {{end}}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="service_id" class="form-label">服務</label>
+                        <select class="form-select" id="service_id" name="service_id" required>
+                            <option value="">請選擇服務</option>
+                            {{range .services}}
+                            <option value="{{.ID}}">{{.Name}} ({{.URL}})</option>
+                            {{end}}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "js"}}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        let permissionId = '';
+
+        // 點擊刪除按鈕
+        document.querySelectorAll('.delete-permission').forEach(button => {
+            button.addEventListener('click', function () {
+                permissionId = this.dataset.id;
+                document.getElementById('personName').textContent = this.dataset.person;
+                document.getElementById('serviceName').textContent = this.dataset.service;
+
+                const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+                deleteModal.show();
+            });
+        });
+
+        // 確認刪除
+        document.getElementById('confirmDelete').addEventListener('click', function () {
+            if (!permissionId) return;
+
+            fetch(`/admin/permissions/delete/${permissionId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('刪除失敗: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('發生錯誤: ' + error);
+                });
+        });
+    });
+</script>
+{{end}}
