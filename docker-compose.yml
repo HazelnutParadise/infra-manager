@@ -1,0 +1,9 @@
+services:
+  app:
+    image: infra-manager:latest
+    ports:
+      - "1452:8080"
+    environment:
+      - GIN_MODE=release
+    volumes:
+      - /mnt/hdd0/infra-manager/data:/data
