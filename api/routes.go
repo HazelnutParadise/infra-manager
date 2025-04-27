@@ -31,16 +31,21 @@ func SetupRouter() *gin.Engine {
 
 	// 管理介面HTML頁面
 	r.LoadHTMLGlob("templates/*")
-	r.GET("/", func(c *gin.Context) {
-		c.HTML(200, "index.html", gin.H{
-			"title": "基礎設施管理系統",
-		})
-	})
 
-	// 登入頁面
+	// 公開路由 - 不需要驗證
 	r.GET("/login", controllers.ShowLogin)
 	r.POST("/auth/login", controllers.Login)
 	r.GET("/logout", controllers.Logout)
+
+	// 主頁重定向到儀表板（如果已登入）或登入頁（如果未登入）
+	r.GET("/", func(c *gin.Context) {
+		session := sessions.Default(c)
+		if session.Get("admin_id") != nil {
+			c.Redirect(http.StatusFound, "/dashboard")
+		} else {
+			c.Redirect(http.StatusFound, "/login")
+		}
+	})
 
 	// 需要驗證的頁面
 	authorized := r.Group("/")

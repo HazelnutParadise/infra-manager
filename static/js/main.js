@@ -23,34 +23,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 登入頁面初始化
 function initLoginPage() {
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            
-            // 設置Basic Auth身份驗證
-            localStorage.setItem('auth', btoa(username + ':' + password));
-            
-            // 嘗試訪問一個需要認證的API端點來驗證
-            fetch(`${API_BASE_URL}/users`, {
-                headers: {
-                    'Authorization': 'Basic ' + localStorage.getItem('auth')
-                }
-            })
-            .then(response => {
-                if (response.ok) {
-                    window.location.href = '/dashboard';
-                } else {
-                    alert('用戶名或密碼錯誤');
-                    localStorage.removeItem('auth');
-                }
-            })
-            .catch(error => {
-                console.error('認證請求失敗:', error);
-                alert('認證請求失敗，請稍後再試');
-            });
+    // 移除舊的 Basic Auth 登入表單處理
+    // 現在登入功能已由 login.html 中的表單直接向 /auth/login 發送請求處理
+    
+    // 設置登出事件
+    const logoutLink = document.querySelector('a[href="javascript:logout()"]');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', function() {
+            fetch('/logout', { method: 'GET' })
+                .then(() => {
+                    window.location.href = '/login';
+                })
+                .catch(error => {
+                    console.error('登出失敗:', error);
+                });
         });
     }
 }
@@ -102,23 +88,15 @@ function initTokensPage() {
 
 // API調用相關函數
 function fetchWithAuth(url, options = {}) {
-    const auth = localStorage.getItem('auth');
-    if (!auth) {
-        window.location.href = '/';
-        return Promise.reject('未認證');
-    }
-
-    const headers = options.headers || {};
-    headers['Authorization'] = 'Basic ' + auth;
-
+    // 移除了 Basic Auth 認證，改為使用 Cookie 中的 Session
+    // Session 憑證會自動隨請求發送
     return fetch(url, {
         ...options,
-        headers
+        credentials: 'include' // 確保發送 Cookie
     }).then(response => {
         if (response.status === 401) {
             // 認證失敗，重定向到登入頁面
-            localStorage.removeItem('auth');
-            window.location.href = '/';
+            window.location.href = '/login';
             return Promise.reject('認證失敗');
         }
         return response.json();
@@ -130,6 +108,7 @@ function fetchUsers() {
     fetchWithAuth(`${API_BASE_URL}/users`)
         .then(users => {
             renderUserTable(users);
+            fillUserDropdown(users); // 填充使用者下拉選單
         })
         .catch(error => console.error('獲取用戶失敗:', error));
 }
@@ -139,8 +118,41 @@ function fetchServices() {
     fetchWithAuth(`${API_BASE_URL}/services`)
         .then(services => {
             renderServiceTable(services);
+            fillServiceDropdown(services); // 填充服務下拉選單
         })
         .catch(error => console.error('獲取服務失敗:', error));
+}
+
+// 填充使用者下拉選單
+function fillUserDropdown(users) {
+    const userSelect = document.getElementById('newTokenUserId');
+    if (userSelect) {
+        userSelect.innerHTML = '';
+        users.forEach(user => {
+            if (user.is_active) { // 只添加啟用的使用者
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = user.username;
+                userSelect.appendChild(option);
+            }
+        });
+    }
+}
+
+// 填充服務下拉選單
+function fillServiceDropdown(services) {
+    const serviceSelect = document.getElementById('newTokenServiceId');
+    if (serviceSelect) {
+        serviceSelect.innerHTML = '';
+        services.forEach(service => {
+            if (service.is_active) { // 只添加啟用的服務
+                const option = document.createElement('option');
+                option.value = service.id;
+                option.textContent = `${service.name} (${service.description})`;
+                serviceSelect.appendChild(option);
+            }
+        });
+    }
 }
 
 // 獲取Token列表

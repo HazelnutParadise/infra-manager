@@ -19,6 +19,7 @@ func ShowLogin(c *gin.Context) {
 	// 檢查是否已登入
 	session := sessions.Default(c)
 	if session.Get("admin_id") != nil {
+		// 已登入用戶重定向到儀表板
 		c.Redirect(http.StatusFound, "/dashboard")
 		return
 	}
