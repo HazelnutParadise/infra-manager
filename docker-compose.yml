@@ -6,4 +6,5 @@ services:
     environment:
       - GIN_MODE=release
     volumes:
-      - /mnt/hdd0/infra-manager/data:/data
+      - /mnt/hdd0/infra-manager/data:/app/data
+    restart: always
