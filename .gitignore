@@ -1,3 +1,4 @@
 *.exe
 /src/data
 *.db
+tempCodeRunnerFile.go

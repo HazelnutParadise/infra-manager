@@ -583,6 +583,36 @@ function fetchTokens() {
         .catch(error => console.error('獲取Token失敗:', error));
 }
 
+// 渲染Token表格
+function renderTokenTable(tokens) {
+    const tableBody = document.getElementById('tokenTableBody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+    tokens.forEach(token => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${token.id}</td>
+            <td>
+                ${token.token_value}
+                <button class="btn btn-info btn-sm" onclick="copyToken('${token.token_value}')">複製</button>
+            </td>
+            <td>${token.user.username}</td>
+            <td>${token.service.name}</td>
+            <td>${new Date(token.expires_at).toLocaleString()}</td>
+            <td>${token.is_active ? '啟用' : '停用'}</td>
+            <td>
+                <button class="btn btn-primary btn-sm" onclick="editToken(${token.id})">編輯</button>
+                <button class="btn ${token.is_active ? 'btn-warning' : 'btn-success'} btn-sm" onclick="toggleTokenStatus(${token.id}, ${!token.is_active})">
+                    ${token.is_active ? '停用' : '啟用'}
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteToken(${token.id})">刪除</button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
 // 更新每日請求數量趨勢圖
 function updateDailyRequestsChart() {
     // 獲取選定的時間範圍
@@ -710,33 +740,6 @@ function renderServiceTable(services) {
                     ${service.is_active ? '停用' : '啟用'}
                 </button>
                 <button class="btn btn-danger btn-sm" onclick="deleteService(${service.id})">刪除</button>
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
-}
-
-// 渲染Token表格
-function renderTokenTable(tokens) {
-    const tableBody = document.getElementById('tokenTableBody');
-    if (!tableBody) return;
-
-    tableBody.innerHTML = '';
-    tokens.forEach(token => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${token.id}</td>
-            <td>${token.token_value}</td>
-            <td>${token.user.username}</td>
-            <td>${token.service.name}</td>
-            <td>${new Date(token.expires_at).toLocaleString()}</td>
-            <td>${token.is_active ? '啟用' : '停用'}</td>
-            <td>
-                <button class="btn btn-primary btn-sm" onclick="editToken(${token.id})">編輯</button>
-                <button class="btn ${token.is_active ? 'btn-warning' : 'btn-success'} btn-sm" onclick="toggleTokenStatus(${token.id}, ${!token.is_active})">
-                    ${token.is_active ? '停用' : '啟用'}
-                </button>
-                <button class="btn btn-danger btn-sm" onclick="deleteToken(${token.id})">刪除</button>
             </td>
         `;
         tableBody.appendChild(row);
@@ -1678,6 +1681,17 @@ function toggleEditExpiryDateField() {
 // 關閉模態窗口
 function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
+}
+
+// 複製Token
+function copyToken(tokenValue) {
+    navigator.clipboard.writeText(tokenValue)
+        .then(() => {
+            alert('Token已複製到剪貼板');
+        })
+        .catch(error => {
+            console.error('複製Token失敗:', error);
+        });
 }
 
 // 登出
