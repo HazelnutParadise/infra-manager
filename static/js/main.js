@@ -306,12 +306,6 @@ function fillUserSelectors(users) {
             userTokenSelector.appendChild(option2);
         });
         
-        // 添加總覽選項
-        const overviewOption = document.createElement('option');
-        overviewOption.value = "all";
-        overviewOption.textContent = "總覽";
-        userServiceSelector.appendChild(overviewOption);
-        
         console.log(`填充了 ${activeUsers.length} 個用戶到選擇器中`);
     }
 }

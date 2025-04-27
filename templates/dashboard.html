@@ -81,6 +81,29 @@
             </div>
         </div>
 
+        <!-- 服務使用量趨勢 -->
+        <div class="card mt-5">
+            <div class="card-header">
+                <h2 class="card-title">服務使用量趨勢</h2>
+                <div class="filter-container">
+                    <select id="serviceTimeSelector" onchange="updateServiceTimeChart()">
+                        <option value="">-- 選擇服務 --</option>
+                        <!-- 服務選項由JavaScript動態填充 -->
+                    </select>
+                    <select id="serviceTimeRange" onchange="updateServiceTimeChart()">
+                        <option value="7">過去7天</option>
+                        <option value="30" selected>過去30天</option>
+                        <option value="90">過去90天</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="serviceTimeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- 使用者服務使用量 -->
         <div class="card mt-5">
             <div class="card-header">
@@ -152,29 +175,6 @@
             <div class="card-body">
                 <div class="chart-container">
                     <canvas id="tokenTimeChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- 服務使用量隨時間變化 -->
-        <div class="card mt-5">
-            <div class="card-header">
-                <h2 class="card-title">服務使用量隨時間變化</h2>
-                <div class="filter-container">
-                    <select id="serviceTimeSelector" onchange="updateServiceTimeChart()">
-                        <option value="">-- 選擇服務 --</option>
-                        <!-- 服務選項由JavaScript動態填充 -->
-                    </select>
-                    <select id="serviceTimeRange" onchange="updateServiceTimeChart()">
-                        <option value="7">過去7天</option>
-                        <option value="30" selected>過去30天</option>
-                        <option value="90">過去90天</option>
-                    </select>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="serviceTimeChart"></canvas>
                 </div>
             </div>
         </div>
