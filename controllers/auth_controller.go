@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"infra-manager/consts"
 	"infra-manager/db"
 	"infra-manager/middlewares"
 	"infra-manager/models"
@@ -10,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var SERVICE_NAME = consts.SERVICE_NAME
 
 // LoginForm 登入表單結構
 type LoginForm struct {
@@ -35,7 +38,7 @@ func ShowLogin(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "login.html", gin.H{
-		"title": "登入",
+		"title": "登入" + " | " + SERVICE_NAME,
 	})
 }
 
@@ -67,7 +70,7 @@ func Logout(c *gin.Context) {
 // ShowChangePasswordPage 顯示更改密碼頁面
 func ShowChangePasswordPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "change_password.html", gin.H{
-		"title": "更改管理員密碼",
+		"title": "更改管理員密碼" + " | " + SERVICE_NAME,
 	})
 }
 

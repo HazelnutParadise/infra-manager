@@ -1,6 +1,7 @@
 package api
 
 import (
+	"infra-manager/consts"
 	"infra-manager/controllers"
 	"infra-manager/middlewares"
 	"infra-manager/services"
@@ -10,6 +11,8 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 )
+
+var SERVICE_NAME = consts.SERVICE_NAME
 
 // SetupRouter 設置所有路由
 func SetupRouter() *gin.Engine {
@@ -53,22 +56,22 @@ func SetupRouter() *gin.Engine {
 	{
 		authorized.GET("/dashboard", func(c *gin.Context) {
 			c.HTML(200, "dashboard.html", gin.H{
-				"title": "儀表板",
+				"title": "儀表板" + " | " + SERVICE_NAME,
 			})
 		})
 		authorized.GET("/users", func(c *gin.Context) {
 			c.HTML(200, "users.html", gin.H{
-				"title": "用戶管理",
+				"title": "用戶管理" + " | " + SERVICE_NAME,
 			})
 		})
 		authorized.GET("/services", func(c *gin.Context) {
 			c.HTML(200, "services.html", gin.H{
-				"title": "服務管理",
+				"title": "服務管理" + " | " + SERVICE_NAME,
 			})
 		})
 		authorized.GET("/tokens", func(c *gin.Context) {
 			c.HTML(200, "tokens.html", gin.H{
-				"title": "Token管理",
+				"title": "Token管理" + " | " + SERVICE_NAME,
 			})
 		})
 		// 添加修改密碼頁面
