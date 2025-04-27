@@ -71,12 +71,17 @@ func SetupRouter() *gin.Engine {
 				"title": "Token管理",
 			})
 		})
+		// 添加修改密碼頁面
+		authorized.GET("/change-password", controllers.ShowChangePasswordPage)
 	}
 
 	// API路由 - 需要管理員認證
 	admin := r.Group("/admin")
 	admin.Use(middlewares.AdminAuth())
 	{
+		// 密碼管理
+		admin.POST("/change-password", controllers.ChangePassword)
+
 		// 用戶管理
 		admin.GET("/users", controllers.GetAllUsers)
 		admin.GET("/users/:id", controllers.GetUser)
@@ -103,13 +108,26 @@ func SetupRouter() *gin.Engine {
 		admin.DELETE("/tokens/:id", controllers.DeleteToken)
 		admin.PATCH("/tokens/:id/status", controllers.ToggleTokenStatus)
 
-		// 統計數據
-		admin.GET("/stats/users/services", controllers.GetUserServiceStats)
-		admin.GET("/stats/users/tokens", controllers.GetUserTokenStats)
-		admin.GET("/stats/tokens/:token_id/time", controllers.GetTokenTimeStats)
-		admin.GET("/stats/services/:service_id/time", controllers.GetServiceTimeStats)
-		admin.GET("/stats/services", controllers.GetServicesUsageStats)
-		admin.GET("/stats/recent", controllers.GetRecentStats)
+		// 統計數據相關路由
+		statsRoutes := admin.Group("/stats")
+		{
+			// 基本統計數據
+			statsRoutes.GET("/recent", controllers.GetRecentStats)
+			statsRoutes.GET("/services", controllers.GetServicesUsageStats)
+
+			// 服務相關統計
+			statsRoutes.GET("/services/:service_id/time", controllers.GetServiceTimeStats)
+
+			// 使用者相關統計
+			statsRoutes.GET("/users/services", controllers.GetUserServiceStats)
+			statsRoutes.GET("/users/tokens", controllers.GetUserTokenStats)
+
+			// 使用者服務使用量時間序列 - 新增端點
+			statsRoutes.GET("/users/:user_id/services/time", controllers.GetUserServiceTimeStats)
+
+			// Token使用量時間序列
+			statsRoutes.GET("/tokens/:token_id/time", controllers.GetTokenTimeStats)
+		}
 	}
 
 	// API代理路由 - 使用TokenAuth中間件處理
