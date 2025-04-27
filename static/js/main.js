@@ -809,6 +809,9 @@ function renderServicesUsageChart(stats) {
     // 根據選擇的圖表類型創建圖表
     const chartType = window.chartTypes.serviceUsage || 'bar';
     
+    // 計算總數(用於計算百分比)
+    const total = data.reduce((acc, val) => acc + val, 0);
+    
     // 創建新圖表
     window.charts.serviceUsage = new Chart(serviceUsageCanvas, {
         type: chartType,
@@ -829,7 +832,33 @@ function renderServicesUsageChart(stats) {
                 y: {
                     beginAtZero: true
                 }
-            } : undefined
+            } : undefined,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        // 如果是圓餅圖，顯示百分比
+                        label: function(context) {
+                            if (chartType === 'pie' || chartType === 'doughnut') {
+                                const value = context.raw;
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${context.label}: ${value} (${percentage}%)`;
+                            }
+                            return `${context.label}: ${context.raw}`;
+                        }
+                    }
+                },
+                // 如果是圓餅圖，直接在圖上顯示百分比
+                datalabels: chartType === 'pie' || chartType === 'doughnut' ? {
+                    formatter: (value, ctx) => {
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `${percentage}%`;
+                    },
+                    color: '#fff',
+                    font: {
+                        weight: 'bold'
+                    }
+                } : false
+            }
         }
     });
 }
@@ -942,6 +971,10 @@ function updateUserServiceChart() {
             const labels = Object.values(serviceMap).map(s => s.name);
             const counts = Object.values(serviceMap).map(s => s.count);
             const colors = generateColors(labels.length);
+            
+            // 計算總數(用於計算百分比)
+            const total = counts.reduce((acc, val) => acc + val, 0);
+            
             window.charts.userService = new Chart(userServiceCanvas, {
                 type: chartType,
                 data: {
@@ -957,7 +990,33 @@ function updateUserServiceChart() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: chartType !== 'pie' ? { y: { beginAtZero: true } } : undefined
+                    scales: chartType !== 'pie' ? { y: { beginAtZero: true } } : undefined,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                // 如果是圓餅圖，顯示百分比
+                                label: function(context) {
+                                    if (chartType === 'pie' || chartType === 'doughnut') {
+                                        const value = context.raw;
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${context.label}: ${value} (${percentage}%)`;
+                                    }
+                                    return `${context.label}: ${context.raw}`;
+                                }
+                            }
+                        },
+                        // 如果是圓餅圖，直接在圖上顯示百分比
+                        datalabels: chartType === 'pie' || chartType === 'doughnut' ? {
+                            formatter: (value, ctx) => {
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${percentage}%`;
+                            },
+                            color: '#fff',
+                            font: {
+                                weight: 'bold'
+                            }
+                        } : false
+                    }
                 }
             });
         });
@@ -1074,6 +1133,9 @@ function updateUserTokenChart() {
             const counts = data.map(d => d.count);
             const colors = generateColors(data.length);
             
+            // 計算總數(用於計算百分比)
+            const total = counts.reduce((acc, val) => acc + val, 0);
+            
             window.charts.userToken = new Chart(userTokenCanvas, {
                 type: chartType,
                 data: {
@@ -1093,7 +1155,33 @@ function updateUserTokenChart() {
                         y: {
                             beginAtZero: true
                         }
-                    } : undefined
+                    } : undefined,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                // 如果是圓餅圖，顯示百分比
+                                label: function(context) {
+                                    if (chartType === 'pie' || chartType === 'doughnut') {
+                                        const value = context.raw;
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${context.label}: ${value} (${percentage}%)`;
+                                    }
+                                    return `${context.label}: ${context.raw}`;
+                                }
+                            }
+                        },
+                        // 如果是圓餅圖，直接在圖上顯示百分比
+                        datalabels: chartType === 'pie' || chartType === 'doughnut' ? {
+                            formatter: (value, ctx) => {
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${percentage}%`;
+                            },
+                            color: '#fff',
+                            font: {
+                                weight: 'bold'
+                            }
+                        } : false
+                    }
                 }
             });
         });
@@ -1687,7 +1775,24 @@ function closeModal(modalId) {
 function copyToken(tokenValue) {
     navigator.clipboard.writeText(tokenValue)
         .then(() => {
-            alert('Token已複製到剪貼板');
+            // 找到被點擊的按鈕
+            const buttons = document.querySelectorAll(`button[onclick="copyToken('${tokenValue}')"]`);
+            if (buttons.length > 0) {
+                const button = buttons[0];
+                const originalText = button.textContent;
+                
+                // 修改按鈕文字和樣式
+                button.textContent = '已複製！';
+                button.classList.remove('btn-info');
+                button.classList.add('btn-success');
+                
+                // 2秒後恢復原樣
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('btn-success');
+                    button.classList.add('btn-info');
+                }, 2000);
+            }
         })
         .catch(error => {
             console.error('複製Token失敗:', error);
@@ -1696,6 +1801,11 @@ function copyToken(tokenValue) {
 
 // 登出
 function logout() {
-    localStorage.removeItem('auth');
-    window.location.href = '/';
+    fetch('/logout', { method: 'GET' })
+        .then(() => {
+            window.location.href = '/login';
+        })
+        .catch(error => {
+            console.error('登出失敗:', error);
+        });
 }
