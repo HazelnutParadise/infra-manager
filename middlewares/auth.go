@@ -96,8 +96,8 @@ func TokenAuth() gin.HandlerFunc {
 			return
 		}
 
-		// 檢查Token是否過期 - 忽略 100 年以上的過期時間 (視為永久有效)
-		farFuture := time.Now().AddDate(99, 0, 0) // 99年後
+		// 檢查Token是否過期 - 忽略 1000 年以上的過期時間 (視為永久有效)
+		farFuture := time.Now().AddDate(900, 0, 0) // 900年後
 		if token.ExpiresAt.Before(time.Now()) && token.ExpiresAt.Before(farFuture) {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Token已過期"})
 			return
@@ -131,11 +131,7 @@ func Logger() gin.HandlerFunc {
 		// 處理請求
 		c.Next()
 
-		// 僅記錄API請求，不記錄管理介面請求
-		if !strings.HasPrefix(c.Request.URL.Path, "/api/") {
-			return
-		}
-
+		// 不再過濾路徑前綴，所有通過 TokenAuth 的請求都會被記錄
 		// 獲取上下文中的資訊
 		tokenInterface, exists := c.Get("token")
 		if !exists {

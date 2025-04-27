@@ -43,12 +43,25 @@ function initLoginPage() {
 
 // 儀表板頁面初始化
 function initDashboard() {
-    // 獲取統計數據
-    fetchRecentStats();
-    fetchServicesUsageStats();
-    
-    // 若有圖表，初始化圖表
-    initCharts();
+    // 先獲取最近統計數據，這將提供基本的圓餅圖數據
+    fetchRecentStats()
+        .then(recentStats => {
+            // 更新統計卡片
+            renderRecentStats(recentStats);
+            
+            // 接著獲取服務使用量數據，用於繪製服務使用量圖表
+            return fetchServicesUsageStats();
+        })
+        .then(servicesStats => {
+            // 繪製服務使用量圖表
+            renderServicesUsageStats(servicesStats);
+            
+            // 初始化每日請求圖表
+            initDailyRequestsChart();
+        })
+        .catch(error => {
+            console.error('載入儀表板數據失敗:', error);
+        });
 }
 
 // 使用者頁面初始化
@@ -174,22 +187,58 @@ function fetchTokens() {
         .catch(error => console.error('獲取Token失敗:', error));
 }
 
-// 獲取最近統計數據
+// 獲取最近統計數據 - 返回 Promise 以便鏈式調用
 function fetchRecentStats() {
-    fetchWithAuth(`${API_BASE_URL}/stats/recent`)
-        .then(stats => {
-            renderRecentStats(stats);
-        })
-        .catch(error => console.error('獲取統計數據失敗:', error));
+    return fetchWithAuth(`${API_BASE_URL}/stats/recent`)
+        .catch(error => {
+            console.error('獲取統計數據失敗:', error);
+            return []; // 返回空數組以避免後續處理出錯
+        });
 }
 
-// 獲取服務使用量統計
+// 獲取服務使用量統計 - 返回 Promise 以便鏈式調用
 function fetchServicesUsageStats() {
-    fetchWithAuth(`${API_BASE_URL}/stats/services`)
-        .then(stats => {
-            renderServicesUsageStats(stats);
+    return fetchWithAuth(`${API_BASE_URL}/stats/services`)
+        .catch(error => {
+            console.error('獲取服務使用量統計失敗:', error);
+            return []; // 返回空數組以避免後續處理出錯
+        });
+}
+
+// 初始化每日請求圖表
+function initDailyRequestsChart() {
+    fetchWithAuth(`${API_BASE_URL}/stats/recent?days=30`)
+        .then(data => {
+            const dailyRequestsCanvas = document.getElementById('dailyRequestsChart');
+            if (!dailyRequestsCanvas) return;
+            
+            const dates = data.map(d => d.date);
+            const counts = data.map(d => d.count);
+            
+            new Chart(dailyRequestsCanvas, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: '每日請求數',
+                        data: counts,
+                        fill: false,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
         })
-        .catch(error => console.error('獲取服務使用量統計失敗:', error));
+        .catch(error => console.error('獲取每日請求數據失敗:', error));
 }
 
 // 渲染用戶表格
@@ -271,31 +320,92 @@ function renderTokenTable(tokens) {
 
 // 渲染最近統計數據
 function renderRecentStats(stats) {
-    // 這裡根據實際需求渲染統計數據到儀表板
+    // 確保有數據
+    if (!stats || !stats.length) {
+        console.warn('沒有可用的統計數據');
+        return;
+    }
+
+    // 計算總數
     const totalRequests = stats.reduce((sum, day) => sum + day.count, 0);
-    const totalUsers = stats.reduce((max, day) => Math.max(max, day.user_count), 0);
-    const totalServices = stats.reduce((max, day) => Math.max(max, day.service_count), 0);
-    const totalTokens = stats.reduce((max, day) => Math.max(max, day.token_count), 0);
+    const totalUsers = Math.max(...stats.map(day => day.user_count));
+    const totalServices = Math.max(...stats.map(day => day.service_count));
+    const totalTokens = Math.max(...stats.map(day => day.token_count));
     
     // 更新統計卡片
-    document.getElementById('totalRequests').textContent = totalRequests;
-    document.getElementById('activeUsers').textContent = totalUsers;
-    document.getElementById('activeServices').textContent = totalServices;
-    document.getElementById('activeTokens').textContent = totalTokens;
+    const elemTotalRequests = document.getElementById('totalRequests');
+    const elemActiveUsers = document.getElementById('activeUsers');
+    const elemActiveServices = document.getElementById('activeServices');
+    const elemActiveTokens = document.getElementById('activeTokens');
+
+    if (elemTotalRequests) elemTotalRequests.textContent = totalRequests;
+    if (elemActiveUsers) elemActiveUsers.textContent = totalUsers;
+    if (elemActiveServices) elemActiveServices.textContent = totalServices;
+    if (elemActiveTokens) elemActiveTokens.textContent = totalTokens;
 }
 
 // 渲染服務使用量統計
 function renderServicesUsageStats(stats) {
-    // 在這裡可以初始化服務使用量的圖表
-    if (window.serviceChart) {
-        // 更新圖表數據
-        const labels = stats.map(s => s.service_name);
-        const data = stats.map(s => s.count);
-        
-        window.serviceChart.data.labels = labels;
-        window.serviceChart.data.datasets[0].data = data;
-        window.serviceChart.update();
+    // 確保有數據
+    if (!stats || !stats.length) {
+        console.warn('沒有可用的服務使用量數據');
+        return;
     }
+
+    // 初始化服務使用量圖表
+    const serviceUsageCanvas = document.getElementById('serviceUsageChart');
+    if (!serviceUsageCanvas) return;
+
+    // 準備圖表數據
+    const labels = stats.map(s => s.service_name);
+    const data = stats.map(s => s.count);
+    const backgroundColors = generateColors(stats.length);
+    
+    // 繪製圖表
+    window.serviceChart = new Chart(serviceUsageCanvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '服務使用次數',
+                data: data,
+                backgroundColor: backgroundColors,
+                borderColor: backgroundColors.map(color => color.replace('0.5', '1')),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// 生成隨機顏色數組（用於圖表）
+function generateColors(count) {
+    const colors = [
+        'rgba(255, 99, 132, 0.5)',
+        'rgba(54, 162, 235, 0.5)',
+        'rgba(255, 206, 86, 0.5)',
+        'rgba(75, 192, 192, 0.5)',
+        'rgba(153, 102, 255, 0.5)',
+        'rgba(255, 159, 64, 0.5)'
+    ];
+    
+    // 如果需要的顏色數量超過預設顏色數量，則生成隨機顏色
+    while (colors.length < count) {
+        const r = Math.floor(Math.random() * 255);
+        const g = Math.floor(Math.random() * 255);
+        const b = Math.floor(Math.random() * 255);
+        colors.push(`rgba(${r}, ${g}, ${b}, 0.5)`);
+    }
+    
+    return colors.slice(0, count);
 }
 
 // 初始化圖表
@@ -364,7 +474,6 @@ function editUser(id) {
         .then(user => {
             document.getElementById('editUserID').value = user.id;
             document.getElementById('editUsername').value = user.username;
-            document.getElementById('editUserActive').checked = user.is_active;
             document.getElementById('editUserModal').style.display = 'block';
         })
         .catch(error => console.error('獲取用戶資料失敗:', error));
@@ -373,7 +482,6 @@ function editUser(id) {
 function updateUser() {
     const id = document.getElementById('editUserID').value;
     const username = document.getElementById('editUsername').value;
-    const isActive = document.getElementById('editUserActive').checked;
     
     fetchWithAuth(`${API_BASE_URL}/users/${id}`, {
         method: 'PUT',
@@ -382,7 +490,7 @@ function updateUser() {
         },
         body: JSON.stringify({
             username: username,
-            is_active: isActive
+            is_active: true // 保留原有狀態，不再從表單獲取
         })
     })
     .then(() => {
@@ -439,15 +547,44 @@ function addService() {
     .catch(error => console.error('添加服務失敗:', error));
 }
 
-// 其他服務相關函數
+// 獲取服務資料並顯示編輯模態窗口
 function editService(id) {
-    // 獲取服務資料並顯示編輯模態窗口
-    // 類似editUser函數
+    fetchWithAuth(`${API_BASE_URL}/services/${id}`)
+        .then(service => {
+            document.getElementById('editServiceID').value = service.id;
+            document.getElementById('editServiceName').value = service.name;
+            document.getElementById('editServiceDescription').value = service.description;
+            document.getElementById('editServiceBaseUrl').value = service.base_url;
+            
+            document.getElementById('editServiceModal').style.display = 'block';
+        })
+        .catch(error => console.error('獲取服務資料失敗:', error));
 }
 
+// 更新服務資料
 function updateService() {
-    // 更新服務資料
-    // 類似updateUser函數
+    const id = document.getElementById('editServiceID').value;
+    const name = document.getElementById('editServiceName').value;
+    const description = document.getElementById('editServiceDescription').value;
+    const baseUrl = document.getElementById('editServiceBaseUrl').value;
+    
+    fetchWithAuth(`${API_BASE_URL}/services/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            name: name,
+            description: description,
+            base_url: baseUrl,
+            is_active: true // 保留原有狀態，不再從表單獲取
+        })
+    })
+    .then(() => {
+        document.getElementById('editServiceModal').style.display = 'none';
+        fetchServices();
+    })
+    .catch(error => console.error('更新服務失敗:', error));
 }
 
 function toggleServiceStatus(id, status) {
@@ -529,8 +666,6 @@ function editToken(id) {
                 document.getElementById('editTokenExpires').value = expiryDate.toISOString().slice(0, 16);
             }
             
-            document.getElementById('editTokenActive').checked = token.is_active;
-            
             // 根據是否永久有效顯示/隱藏過期時間欄位
             toggleEditExpiryDateField();
             
@@ -542,11 +677,11 @@ function editToken(id) {
 function updateToken() {
     const id = document.getElementById('editTokenID').value;
     const isPermanent = document.getElementById('editTokenIsPermanent').checked;
-    const isActive = document.getElementById('editTokenActive').checked;
     
     const requestBody = {
-        is_active: isActive,
-        is_permanent: isPermanent
+        is_permanent: isPermanent,
+        // 保留原有的啟用狀態，不再從表單獲取
+        is_active: true
     };
     
     // 如果不是永久有效，則加入過期時間
@@ -595,8 +730,8 @@ function deleteToken(id) {
 function isPermanentToken(expiresAt) {
     const expiryDate = new Date(expiresAt);
     const now = new Date();
-    // 如果過期時間在 90 年之後，視為永久有效
-    return (expiryDate.getFullYear() - now.getFullYear() >= 90);
+    // 如果過期時間在 900 年之後，視為永久有效
+    return (expiryDate.getFullYear() - now.getFullYear() >= 900);
 }
 
 // 切換過期日期欄位的顯示/隱藏

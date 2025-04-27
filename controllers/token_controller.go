@@ -123,8 +123,8 @@ func CreateToken(c *gin.Context) {
 
 	// 設置過期時間或永久有效
 	if tokenRequest.IsPermanent {
-		// 設置一個很久的未來日期 (100年後)
-		farFuture := time.Now().AddDate(100, 0, 0)
+		// 設置一個很久的未來日期 (1000年後)
+		farFuture := time.Now().AddDate(1000, 0, 0)
 		token.ExpiresAt = farFuture
 	} else if tokenRequest.ExpiresAt != nil {
 		token.ExpiresAt = *tokenRequest.ExpiresAt
@@ -170,8 +170,8 @@ func UpdateToken(c *gin.Context) {
 
 	// 根據是否永久有效設置過期時間
 	if updatedToken.IsPermanent {
-		// 設置一個很久的未來日期 (100年後)
-		farFuture := time.Now().AddDate(100, 0, 0)
+		// 設置一個很久的未來日期 (1000年後)
+		farFuture := time.Now().AddDate(1000, 0, 0)
 		token.ExpiresAt = farFuture
 	} else if updatedToken.ExpiresAt != nil {
 		token.ExpiresAt = *updatedToken.ExpiresAt
