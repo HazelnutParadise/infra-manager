@@ -31,15 +31,16 @@ type Service struct {
 // Token模型
 type Token struct {
 	gorm.Model
-	ID         uint        `gorm:"primaryKey" json:"id"`
-	TokenValue string      `gorm:"unique;not null" json:"token_value"`
-	UserID     uint        `gorm:"not null" json:"user_id"`
-	User       User        `json:"user,omitempty"`
-	ServiceID  uint        `gorm:"not null" json:"service_id"`
-	Service    Service     `json:"service,omitempty"`
-	ExpiresAt  time.Time   `json:"expires_at"`
-	IsActive   bool        `gorm:"default:true" json:"is_active"`
-	AccessLogs []AccessLog `gorm:"foreignKey:TokenID" json:"access_logs,omitempty"`
+	ID          uint        `gorm:"primaryKey" json:"id"`
+	TokenValue  string      `gorm:"unique;not null" json:"token_value"`
+	UserID      uint        `gorm:"not null" json:"user_id"`
+	User        User        `json:"user,omitempty"`
+	ServiceID   uint        `gorm:"not null" json:"service_id"`
+	Service     Service     `json:"service,omitempty"`
+	Description string      `json:"description"` // 新增備註說明欄位
+	ExpiresAt   time.Time   `json:"expires_at"`
+	IsActive    bool        `gorm:"default:true" json:"is_active"`
+	AccessLogs  []AccessLog `gorm:"foreignKey:TokenID" json:"access_logs,omitempty"`
 }
 
 // 使用紀錄模型

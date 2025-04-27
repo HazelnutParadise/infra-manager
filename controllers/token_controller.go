@@ -85,6 +85,7 @@ func CreateToken(c *gin.Context) {
 		ServiceID   uint       `json:"service_id" binding:"required"`
 		ExpiresAt   *time.Time `json:"expires_at"`
 		IsPermanent bool       `json:"is_permanent"`
+		Description string     `json:"description"` // 新增備註說明欄位
 	}
 
 	if err := c.ShouldBindJSON(&tokenRequest); err != nil {
@@ -115,10 +116,11 @@ func CreateToken(c *gin.Context) {
 
 	// 創建Token記錄
 	token := models.Token{
-		TokenValue: tokenValue,
-		UserID:     tokenRequest.UserID,
-		ServiceID:  tokenRequest.ServiceID,
-		IsActive:   true,
+		TokenValue:  tokenValue,
+		UserID:      tokenRequest.UserID,
+		ServiceID:   tokenRequest.ServiceID,
+		IsActive:    true,
+		Description: tokenRequest.Description, // 設置備註說明
 	}
 
 	// 設置過期時間或永久有效
@@ -158,6 +160,7 @@ func UpdateToken(c *gin.Context) {
 		ExpiresAt   *time.Time `json:"expires_at"`
 		IsActive    bool       `json:"is_active"`
 		IsPermanent bool       `json:"is_permanent"`
+		Description string     `json:"description"` // 新增備註說明欄位
 	}
 
 	if err := c.ShouldBindJSON(&updatedToken); err != nil {
@@ -165,8 +168,9 @@ func UpdateToken(c *gin.Context) {
 		return
 	}
 
-	// 更新 IsActive 狀態
+	// 更新 IsActive 狀態與備註說明
 	token.IsActive = updatedToken.IsActive
+	token.Description = updatedToken.Description // 更新備註說明
 
 	// 根據是否永久有效設置過期時間
 	if updatedToken.IsPermanent {

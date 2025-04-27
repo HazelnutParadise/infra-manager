@@ -35,6 +35,7 @@
                             <th>Token值</th>
                             <th>使用者</th>
                             <th>服務</th>
+                            <th>備註說明</th>
                             <th>過期時間</th>
                             <th>狀態</th>
                             <th>操作</th>
@@ -64,6 +65,10 @@
                 <select id="newTokenServiceId" class="form-control" required>
                     <!-- 服務選項將由JavaScript動態填充 -->
                 </select>
+            </div>
+            <div class="form-group">
+                <label for="newTokenDescription">備註說明</label>
+                <textarea id="newTokenDescription" class="form-control" placeholder="請輸入Token的用途或備註說明"></textarea>
             </div>
             <div class="form-group" id="expiresAtGroup">
                 <label for="newTokenExpires">過期時間</label>
@@ -98,6 +103,10 @@
             <div class="form-group">
                 <label for="editTokenService">服務</label>
                 <input type="text" id="editTokenService" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label for="editTokenDescription">備註說明</label>
+                <textarea id="editTokenDescription" class="form-control" placeholder="請輸入Token的用途或備註說明"></textarea>
             </div>
             <div class="form-group" id="editExpiresAtGroup">
                 <label for="editTokenExpires">過期時間</label>

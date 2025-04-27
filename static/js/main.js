@@ -578,7 +578,43 @@ function switchChartType(chartId, type) {
 function fetchTokens() {
     fetchWithAuth(`${API_BASE_URL}/tokens`)
         .then(tokens => {
-            renderTokenTable(tokens);
+            const tableBody = document.getElementById('tokenTableBody');
+            if (!tableBody) return;
+            
+            tableBody.innerHTML = '';
+            tokens.forEach(token => {
+                const expiryDate = new Date(token.expires_at);
+                const isPermanent = isPermanentToken(token.expires_at);
+                const expiryStatus = isPermanent ? '永久有效' : 
+                    (expiryDate > new Date() ? formatDate(expiryDate) : '<span class="text-danger">已過期</span>');
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${token.id}</td>
+                    <td>
+                        ${token.token_value.substring(0, 8)}...
+                        <button class="btn btn-info btn-sm" onclick="copyToken('${token.token_value}')">複製</button>
+                    </td>
+                    <td>${token.user ? token.user.username : '未知使用者'}</td>
+                    <td>${token.service ? token.service.name : '未知服務'}</td>
+                    <td>${token.description || '-'}</td>
+                    <td>${expiryStatus}</td>
+                    <td>
+                        <span class="badge ${token.is_active ? 'badge-success' : 'badge-danger'}">
+                            ${token.is_active ? '啟用' : '禁用'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="editToken(${token.id})">編輯</button>
+                        <button class="btn ${token.is_active ? 'btn-warning' : 'btn-success'} btn-sm" 
+                            onclick="toggleTokenStatus(${token.id}, ${!token.is_active})">
+                            ${token.is_active ? '禁用' : '啟用'}
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteToken(${token.id})">刪除</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
         })
         .catch(error => console.error('獲取Token失敗:', error));
 }
@@ -1368,6 +1404,20 @@ function updateServiceTimeChart() {
         .catch(error => console.error('獲取服務使用量數據失敗:', error));
 }
 
+// 格式化日期，用於顯示Token過期時間
+function formatDate(date) {
+    if (!(date instanceof Date) || isNaN(date)) {
+        return '無效日期';
+    }
+    return date.toLocaleString('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
 // 生成隨機顏色數組（用於圖表）
 function generateColors(count) {
     const colors = [
@@ -1624,11 +1674,13 @@ function addToken() {
     const userId = document.getElementById('newTokenUserId').value;
     const serviceId = document.getElementById('newTokenServiceId').value;
     const isPermanent = document.getElementById('newTokenIsPermanent').checked;
+    const description = document.getElementById('newTokenDescription').value;
     
     const requestBody = {
         user_id: parseInt(userId),
         service_id: parseInt(serviceId),
-        is_permanent: isPermanent
+        is_permanent: isPermanent,
+        description: description
     };
     
     // 如果不是永久有效，則加入過期時間
@@ -1685,11 +1737,13 @@ function editToken(id) {
 function updateToken() {
     const id = document.getElementById('editTokenID').value;
     const isPermanent = document.getElementById('editTokenIsPermanent').checked;
+    const description = document.getElementById('editTokenDescription').value;
     
     const requestBody = {
         is_permanent: isPermanent,
         // 保留原有的啟用狀態，不再從表單獲取
-        is_active: true
+        is_active: true,
+        description: description
     };
     
     // 如果不是永久有效，則加入過期時間
