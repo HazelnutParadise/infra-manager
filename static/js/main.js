@@ -592,8 +592,10 @@ function fetchTokens() {
                 row.innerHTML = `
                     <td>${token.id}</td>
                     <td>
-                        ${token.token_value.substring(0, 8)}...
-                        <button class="btn btn-info btn-sm" onclick="copyToken('${token.token_value}')">複製</button>
+                        <div class="d-flex align-items-center">
+                            <span class="mr-2">${token.token_value.substring(0, 8)}...</span>
+                            <button class="btn btn-info btn-sm ml-2" onclick="copyToken('${token.token_value}')">複製</button>
+                        </div>
                     </td>
                     <td>${token.user ? token.user.username : '未知使用者'}</td>
                     <td>${token.service ? token.service.name : '未知服務'}</td>
@@ -1716,6 +1718,9 @@ function editToken(id) {
             document.getElementById('editTokenUser').value = token.user.username;
             document.getElementById('editTokenService').value = token.service.name;
             
+            // 帶入備註說明
+            document.getElementById('editTokenDescription').value = token.description || '';
+            
             // 判斷是否為永久Token
             const isPermanent = isPermanentToken(token.expires_at);
             document.getElementById('editTokenIsPermanent').checked = isPermanent;
@@ -1836,7 +1841,7 @@ function copyToken(tokenValue) {
                 const originalText = button.textContent;
                 
                 // 修改按鈕文字和樣式
-                button.textContent = '已複製！';
+                button.textContent = 'copied!';
                 button.classList.remove('btn-info');
                 button.classList.add('btn-success');
                 
