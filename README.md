@@ -1,100 +1,41 @@
 # 基礎設施管理系統
 
-一個完整的基礎設施管理系統，用於管理 API 服務的訪問權限和代理請求。此系統提供人員、服務、令牌和權限的完整管理功能，並記錄使用統計資料。
+## 基本架構
 
-## 主要功能
+- 一個api(port: 1452)
+- 一個管理介面(port: 1453)
+- api經過token驗證後反向代理到目標服務，攜帶所有請求header、body、查詢參數
+  - 用戶或token若被停權、token過期或無效或與請求的服務不符則回傳403
+  - 找不到服務則回傳404
+- api只有一個endpoint：`/<目標服務名稱>/<存取token>/<目標服務的endpoint>`
+- 管理介面只有一個admin，人員都是由admin管理，admin密碼由環境變數設定
 
-- **代理請求**：將請求轉發到目標服務，同時進行身份驗證和授權
-- **人員管理**：管理可以訪問服務的人員
-- **服務管理**：管理提供 API 的服務
-- **權限管理**：設置人員對服務的訪問權限
-- **令牌管理**：創建和管理用於訪問服務的令牌
-- **使用統計**：記錄和查看服務使用情況的統計數據
+## 技術棧
 
-## 技術架構
+- 前端：HTML + CSS + JS + Bootstrap
+- 後端：Gin + Gorm
+- 資料庫：SQLite3
+- 部署：Docker + Docker Compose
 
-- 使用 Go 語言和 Gin 框架開發後端
-- 使用 GORM 作為 ORM 框架
-- 使用 SQLite 作為數據庫
-- 使用 Bootstrap 5 實現前端界面
-- 使用 Docker 容器化部署
+## 對應關係
 
-## 安裝和運行
+- 一個人員可以有多個token
+- 一個token只能對應一個人員
+- 一個token只能對應一個服務
+- 一個服務可以對應多個token
 
-### 使用 Docker Compose（推薦）
+## 管理介面功能
 
-1. 確保已安裝 Docker 和 Docker Compose
-2. 克隆此存儲庫：`git clone https://github.com/yourusername/infrastructure.git`
-3. 進入項目目錄：`cd infrastructure`
-4. 啟動服務：`docker-compose up -d`
-5. 在瀏覽器中訪問：`http://localhost:8080`
+### 管理
 
-### 手動運行
+- 新增/修改/刪除/停權人員
+- 新增/修改/刪除/停權token
+- 新增/修改/刪除/停權服務
 
-1. 確保已安裝 Go 1.21 或更高版本
-2. 克隆此存儲庫：`git clone https://github.com/yourusername/infrastructure.git`
-3. 進入項目目錄：`cd infrastructure`
-4. 進入源碼目錄：`cd src`
-5. 下載依賴：`go mod download`
-6. 編譯應用程序：`go build -o infrastructure main.go`
-7. 運行應用程序：`./infrastructure`
-8. 在瀏覽器中訪問：`http://localhost:8080`
+### 視覺化儀表板
 
-## 使用方法
-
-### 初次登入
-
-- 網址：`http://localhost:8080/admin/login`
-- 預設帳號：`admin`
-- 預設密碼：`admin`（或環境變量 `ADMIN_PASSWORD` 指定的值）
-- **注意**：請在首次登入後修改預設密碼
-
-### API 使用
-
-API 請求的 URL 格式為：`http://{domain}/{service_name}/{token}/{path}`
-
-例如，如果要訪問名為 "example-api" 的服務的 "/users" 路徑，使用令牌 "abc123"，則請求 URL 為：
-```
-http://localhost:8080/example-api/abc123/users
-```
-
-### 管理介面
-
-系統提供了直觀的管理介面，包括以下功能：
-
-- **儀表板**：顯示系統概況和使用統計
-- **人員管理**：管理可訪問系統的人員
-- **服務管理**：管理可被代理的服務
-- **令牌管理**：創建和管理訪問令牌
-- **權限管理**：管理人員對服務的訪問權限
-
-## 環境變數
-
-系統支持以下環境變數：
-
-- `PORT`：服務監聽端口（默認：8080）
-- `DB_PATH`：SQLite 數據庫文件路徑（默認：./infrastructure.db）
-- `ADMIN_PASSWORD`：管理員密碼（默認：admin）
-- `GIN_MODE`：Gin 框架運行模式（默認：release）
-
-## 系統架構
-
-```
-src/
-├── main.go                  # 主入口點
-├── internal/                # 內部模組
-│   ├── models/              # 數據模型定義
-│   │   └── models.go
-│   ├── proxy/               # 代理功能
-│   │   ├── proxy.go
-│   │   └── routes.go
-│   └── admin/               # 管理功能
-│       ├── handlers.go
-│       └── routes.go
-├── templates/               # HTML 模板
-└── static/                  # 靜態資源
-```
-
-## 許可證
-
-MIT
+- 每個人員每種服務使用量圓餅圖、長條圖、折線圖
+- 每個人員每個token使用量圓餅圖、長條圖、折線圖
+- 每個token隨時間使用量折線圖
+- 每個服務隨時間使用總量折線圖
+- 每個服務使用總量圓餅圖、長條圖
