@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="/dashboard" class="navbar-brand">基礎設施管理系統</a>
+        <ul class="navbar-nav">
+            <li class="nav-item"><a href="/dashboard" class="nav-link">儀表板</a></li>
+            <li class="nav-item"><a href="/users" class="nav-link">使用者</a></li>
+            <li class="nav-item"><a href="/services" class="nav-link">服務</a></li>
+            <li class="nav-item"><a href="/tokens" class="nav-link">Token</a></li>
+            <li class="nav-item"><a href="javascript:logout()" class="nav-link">登出</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Token管理</h2>
+                <button id="addTokenBtn" class="btn btn-primary">新增Token</button>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Token值</th>
+                            <th>使用者</th>
+                            <th>服務</th>
+                            <th>過期時間</th>
+                            <th>狀態</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tokenTableBody">
+                        <!-- Token資料將由JavaScript動態填充 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增Token模態窗口 -->
+    <div id="addTokenModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+        <div style="background: white; width: 500px; margin: 100px auto; padding: 20px; border-radius: 5px;">
+            <h3>新增Token</h3>
+            <div class="form-group">
+                <label for="newTokenUserId">使用者</label>
+                <select id="newTokenUserId" class="form-control" required>
+                    <!-- 使用者選項將由JavaScript動態填充 -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="newTokenServiceId">服務</label>
+                <select id="newTokenServiceId" class="form-control" required>
+                    <!-- 服務選項將由JavaScript動態填充 -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="newTokenExpires">過期時間</label>
+                <input type="datetime-local" id="newTokenExpires" class="form-control" required>
+            </div>
+            <div class="mt-3">
+                <button onclick="addToken()" class="btn btn-success">確定</button>
+                <button onclick="closeModal('addTokenModal')" class="btn btn-danger">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 編輯Token模態窗口 -->
+    <div id="editTokenModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+        <div style="background: white; width: 500px; margin: 100px auto; padding: 20px; border-radius: 5px;">
+            <h3>編輯Token</h3>
+            <input type="hidden" id="editTokenID">
+            <div class="form-group">
+                <label for="editTokenValue">Token值</label>
+                <input type="text" id="editTokenValue" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label for="editTokenUser">使用者</label>
+                <input type="text" id="editTokenUser" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label for="editTokenService">服務</label>
+                <input type="text" id="editTokenService" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label for="editTokenExpires">過期時間</label>
+                <input type="datetime-local" id="editTokenExpires" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="editTokenActive">
+                    啟用
+                </label>
+            </div>
+            <div class="mt-3">
+                <button onclick="updateToken()" class="btn btn-success">更新</button>
+                <button onclick="closeModal('editTokenModal')" class="btn btn-danger">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+
+</html>

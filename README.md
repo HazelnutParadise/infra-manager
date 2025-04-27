@@ -15,7 +15,6 @@
 - 前端：HTML + CSS + JS，使用Ajax
 - 後端：Gin + Gorm
 - 路由：Gin，但不使用模板引擎
-- 身份驗證：BaseAuth
 - 資料庫：SQLite3
 - 部署：Docker + Docker Compose
 
