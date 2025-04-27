@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 
 	"infra-manager/models"
 
@@ -17,7 +18,13 @@ var DB *gorm.DB
 // 初始化資料庫連接
 func InitDB() {
 	var err error
-	dbPath := "./infra_manager.db"
+	const DIR = "data"
+	if _, err := os.Stat(DIR); os.IsNotExist(err) {
+		if err := os.Mkdir(DIR, 0755); err != nil {
+			log.Fatalf("無法創建資料夾: %v", err)
+		}
+	}
+	dbPath := path.Join(DIR, "infra_manager.db")
 	DB, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("無法連接到資料庫: %v", err)

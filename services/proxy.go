@@ -81,6 +81,11 @@ func ProxyRequest(c *gin.Context) {
 		}
 	}
 
+	// 添加禁止快取的標頭
+	c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
+
 	// 設置狀態碼並發送響應
 	c.Status(proxyResp.StatusCode)
 	c.Writer.Write(respBody)
