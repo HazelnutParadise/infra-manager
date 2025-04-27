@@ -634,7 +634,7 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  background: linear-gradient(135deg, var(--info), var(--info));
   color: var(--white);
   text-align: center;
   padding: 0.5rem;
