@@ -8,3 +8,9 @@ services:
     volumes:
       - /mnt/hdd0/infra-manager/data:/app/data
     restart: always
+    networks:
+      - ollama-net
+
+networks:
+  ollama-net:
+    external: true
