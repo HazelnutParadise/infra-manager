@@ -137,7 +137,9 @@ func SetupRouter() *gin.Engine {
 	}
 
 	// API代理路由 - 使用TokenAuth中間件處理
-	r.NoRoute(middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
+	// 將代理服務移至 /api/* 路徑下
+	serviceGroup := r.Group("/api")
+	serviceGroup.Any("/*path", middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
 
 	return r
 }

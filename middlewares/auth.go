@@ -71,7 +71,10 @@ func AdminLogin(username, password string, c *gin.Context) bool {
 // TokenAuth 是API的認證中間件
 func TokenAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		path := strings.TrimPrefix(c.Request.URL.Path, "/")
+		// 從api路徑獲取實際路徑
+		path := c.Param("path")
+		path = strings.TrimPrefix(path, "/")
+
 		parts := strings.SplitN(path, "/", 3)
 
 		if len(parts) < 2 {
