@@ -2,8 +2,8 @@
 
 ## 基本架構
 
-- 一個api(port: 1452)
-- 一個管理介面(port: 1453)
+- 一個api
+- 一個管理介面
 - api經過token驗證後反向代理到目標服務，攜帶所有請求header、body、查詢參數
   - 用戶或token若被停權、token過期或無效或與請求的服務不符則回傳403
   - 找不到服務則回傳404
@@ -12,8 +12,10 @@
 
 ## 技術棧
 
-- 前端：HTML + CSS + JS + Bootstrap
+- 前端：HTML + CSS + JS，使用Ajax
 - 後端：Gin + Gorm
+- 路由：Gin，但不使用模板引擎
+- 身份驗證：BaseAuth
 - 資料庫：SQLite3
 - 部署：Docker + Docker Compose
 
