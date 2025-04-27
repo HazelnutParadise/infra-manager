@@ -122,8 +122,11 @@ func SetupRouter() *gin.Engine {
 			statsRoutes.GET("/users/services", controllers.GetUserServiceStats)
 			statsRoutes.GET("/users/tokens", controllers.GetUserTokenStats)
 
-			// 使用者服務使用量時間序列 - 新增端點
+			// 使用者服務使用量時間序列
 			statsRoutes.GET("/users/:user_id/services/time", controllers.GetUserServiceTimeStats)
+
+			// 使用者Token使用量時間序列 - 新增端點
+			statsRoutes.GET("/users/:user_id/tokens/time", controllers.GetUserTokenTimeStats)
 
 			// Token使用量時間序列
 			statsRoutes.GET("/tokens/:token_id/time", controllers.GetTokenTimeStats)

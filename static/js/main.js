@@ -844,58 +844,97 @@ function updateUserServiceChart() {
     const chartType = window.chartTypes.userService || 'bar';
     const userServiceCanvas = document.getElementById('userServiceChart');
     if (!userServiceCanvas) return;
-    // 若已存在圖表，則先銷毀
     if (window.charts.userService) {
         window.charts.userService.destroy();
     }
     if (chartType === 'line') {
-        // 折線圖：以時間為橫軸
+        // 折線圖：以時間為橫軸，風格與每日請求數量趨勢圖一致
         const days = document.getElementById('dailyRequestsTimeRange')?.value || 30;
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
-        cutoffDate.setHours(0, 0, 0, 0);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const dateRange = generateDateRange(cutoffDate, today);
-        fetchWithAuth(`${API_BASE_URL}/stats/users/${userId}/services/time`).then(data => {
-            // 分服務分日期彙整
-            const servicesMap = {};
-            data.forEach(item => {
-                if (!servicesMap[item.service_id]) {
-                    servicesMap[item.service_id] = { name: item.service_name, data: {} };
-                }
-                servicesMap[item.service_id].data[item.date] = item.count;
-            });
-            const datasets = [];
-            const colors = generateColors(Object.keys(servicesMap).length);
-            Object.keys(servicesMap).forEach((serviceId, idx) => {
-                const service = servicesMap[serviceId];
-                const serviceData = dateRange.map(date => service.data[date] || 0);
-                datasets.push({
-                    label: service.name,
-                    data: serviceData,
-                    fill: false,
-                    borderColor: colors[idx],
-                    backgroundColor: colors[idx],
-                    tension: 0.1,
-                    pointRadius: 3
+        
+        fetchWithAuth(`${API_BASE_URL}/stats/users/${userId}/services/time`)
+            .then(data => {
+                // 分服務分日期彙整
+                const servicesMap = {};
+                data.forEach(item => {
+                    if (!servicesMap[item.service_id]) {
+                        servicesMap[item.service_id] = { name: item.service_name, data: {} };
+                    }
+                    servicesMap[item.service_id].data[item.date] = item.count;
                 });
-            });
-            window.charts.userService = new Chart(userServiceCanvas, {
-                type: 'line',
-                data: { labels: dateRange, datasets },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { tooltip: { callbacks: { title: t => (new Date(t[0].label)).toLocaleDateString('zh-TW') } } },
-                    scales: { x: { title: { display: true, text: '日期' }, ticks: { maxRotation: 45, minRotation: 45 } }, y: { beginAtZero: true, title: { display: true, text: '使用次數' } } }
-                }
-            });
-        });
+                
+                // 計算日期範圍（過去X天到今天）
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
+                cutoffDate.setHours(0, 0, 0, 0);
+                
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                // 產生完整的日期範圍，包含今日
+                const dateRange = generateDateRange(cutoffDate, today);
+                
+                // 準備數據集
+                const datasets = [];
+                const colors = generateColors(Object.keys(servicesMap).length);
+                
+                Object.keys(servicesMap).forEach((serviceId, idx) => {
+                    const service = servicesMap[serviceId];
+                    const serviceData = dateRange.map(date => service.data[date] || 0);
+                    
+                    datasets.push({
+                        label: service.name,
+                        data: serviceData,
+                        fill: false,
+                        borderColor: colors[idx],
+                        backgroundColor: colors[idx],
+                        tension: 0.1,
+                        pointRadius: 3,
+                        pointBackgroundColor: colors[idx]
+                    });
+                });
+                
+                // 創建圖表
+                window.charts.userService = new Chart(userServiceCanvas, {
+                    type: 'line',
+                    data: { labels: dateRange, datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    title: function(tooltipItems) {
+                                        const date = new Date(tooltipItems[0].label);
+                                        return date.toLocaleDateString('zh-TW');
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '日期'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: '使用次數'
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('獲取使用者服務使用量時間數據失敗:', error));
     } else {
-        // 長條圖/圓餅圖：以服務為橫軸
         fetchUserServiceStats(userId).then(data => {
-            // 以服務彙總
             const serviceMap = {};
             data.forEach(item => {
                 if (!serviceMap[item.service_id]) {
@@ -931,59 +970,124 @@ function updateUserServiceChart() {
 // 更新使用者Token使用量圖表
 function updateUserTokenChart() {
     const userId = document.getElementById('userTokenSelector').value;
-    if (!userId) {
-        return; // 未選擇使用者
-    }
+    if (!userId) return;
     
-    fetchWithAuth(`${API_BASE_URL}/stats/users/tokens`)
-        .then(data => {
-            // 過濾特定使用者的數據
-            const userData = data.filter(item => item.user_id == userId);
+    const chartType = window.chartTypes.userToken || 'bar';
+    const userTokenCanvas = document.getElementById('userTokenChart');
+    if (!userTokenCanvas) return;
+    
+    if (window.charts.userToken) {
+        window.charts.userToken.destroy();
+    }
+
+    if (chartType === 'line') {
+        // 折線圖：以時間為橫軸，每個token一條線
+        const days = document.getElementById('dailyRequestsTimeRange')?.value || 30;
+        
+        // 對於折線圖，需要獲取時間序列數據
+        fetchWithAuth(`${API_BASE_URL}/stats/users/${userId}/tokens/time`)
+            .then(data => {
+                // 分token分日期彙整
+                const tokensMap = {};
+                data.forEach(item => {
+                    if (!tokensMap[item.token_id]) {
+                        tokensMap[item.token_id] = { 
+                            name: `${item.token_value.substring(0, 8)}... - ${item.service_name}`, 
+                            data: {} 
+                        };
+                    }
+                    tokensMap[item.token_id].data[item.date] = item.count;
+                });
+                
+                // 計算日期範圍（過去X天到今天）
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
+                cutoffDate.setHours(0, 0, 0, 0);
+                
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                // 產生完整的日期範圍，包含今日
+                const dateRange = generateDateRange(cutoffDate, today);
+                
+                // 準備數據集
+                const datasets = [];
+                const colors = generateColors(Object.keys(tokensMap).length);
+                
+                Object.keys(tokensMap).forEach((tokenId, idx) => {
+                    const token = tokensMap[tokenId];
+                    const tokenData = dateRange.map(date => token.data[date] || 0);
+                    
+                    datasets.push({
+                        label: token.name,
+                        data: tokenData,
+                        fill: false,
+                        borderColor: colors[idx],
+                        backgroundColor: colors[idx],
+                        tension: 0.1,
+                        pointRadius: 3,
+                        pointBackgroundColor: colors[idx]
+                    });
+                });
+                
+                // 創建圖表
+                window.charts.userToken = new Chart(userTokenCanvas, {
+                    type: 'line',
+                    data: { labels: dateRange, datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    title: function(tooltipItems) {
+                                        const date = new Date(tooltipItems[0].label);
+                                        return date.toLocaleDateString('zh-TW');
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '日期'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: '使用次數'
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('獲取使用者Token使用量時間數據失敗:', error));
+    } else {
+        // 長條圖/圓餅圖：以token為橫軸
+        fetchUserTokenStats(userId).then(data => {
+            const labels = data.map(d => `${d.token_value.substring(0, 8)}... - ${d.service_name}`);
+            const counts = data.map(d => d.count);
+            const colors = generateColors(data.length);
             
-            const userTokenCanvas = document.getElementById('userTokenChart');
-            if (!userTokenCanvas) return;
-            
-            // 若已存在圖表，則先銷毀
-            if (window.charts.userToken) {
-                window.charts.userToken.destroy();
-            }
-            
-            // 准備圖表數據
-            const labels = userData.map(d => `${d.service_name} (${d.token_value.substring(0, 8)}...)`);
-            const counts = userData.map(d => d.count);
-            const backgroundColors = generateColors(userData.length);
-            
-            // 根據選擇的圖表類型創建圖表
-            const chartType = window.chartTypes.userToken || 'bar';
-            
-            // 配置數據集
-            let datasets = [];
-            if (chartType === 'line') {
-                // 折線圖使用單一數據集
-                datasets = [{
-                    label: 'Token使用次數',
-                    data: counts,
-                    fill: false,
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.1
-                }];
-            } else {
-                // 條形圖和圓餅圖使用帶顏色的數據集
-                datasets = [{
-                    label: 'Token使用次數',
-                    data: counts,
-                    backgroundColor: backgroundColors,
-                    borderColor: backgroundColors.map(color => color.replace('0.5', '1')),
-                    borderWidth: 1
-                }];
-            }
-            
-            // 創建圖表
             window.charts.userToken = new Chart(userTokenCanvas, {
                 type: chartType,
                 data: {
                     labels: labels,
-                    datasets: datasets
+                    datasets: [{
+                        label: 'Token使用次數',
+                        data: counts,
+                        backgroundColor: colors,
+                        borderColor: colors.map(color => color.replace('0.5', '1')),
+                        borderWidth: 1
+                    }]
                 },
                 options: {
                     responsive: true,
@@ -995,24 +1099,20 @@ function updateUserTokenChart() {
                     } : undefined
                 }
             });
-        })
-        .catch(error => console.error('獲取使用者Token使用量數據失敗:', error));
+        });
+    }
 }
 
 // 更新Token隨時間使用量圖表
 function updateTokenTimeChart() {
     const tokenId = document.getElementById('tokenTimeSelector').value;
-    if (!tokenId) {
-        return; // 未選擇Token
-    }
+    if (!tokenId) return;
     
-    // 顯示載入中的提示
-    console.log(`正在載入 Token ID ${tokenId} 的時間使用量數據...`);
+    // 獲取選定的時間範圍
+    const days = document.getElementById('tokenTimeRange').value || 30;
     
     fetchWithAuth(`${API_BASE_URL}/stats/tokens/${tokenId}/time`)
         .then(data => {
-            console.log('Token時間使用量數據載入成功:', data);
-            
             const tokenTimeCanvas = document.getElementById('tokenTimeChart');
             if (!tokenTimeCanvas) return;
             
@@ -1021,39 +1121,7 @@ function updateTokenTimeChart() {
                 window.charts.tokenTime.destroy();
             }
             
-            // 如果沒有數據，顯示提示
-            if (!data || data.length === 0) {
-                console.warn('沒有可用的Token使用時間數據');
-                // 創建一個空的圖表以顯示"無數據"訊息
-                window.charts.tokenTime = new Chart(tokenTimeCanvas, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            label: 'Token使用次數',
-                            data: [],
-                            fill: false,
-                            borderColor: 'rgb(54, 162, 235)'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: '無可用數據'
-                            }
-                        }
-                    }
-                });
-                return;
-            }
-            
-            // 獲取選定的時間範圍
-            const days = document.getElementById('tokenTimeRange').value || 30;
-            
-            // 過濾最近X天的數據
+            // 計算日期範圍（過去X天到今天）
             const cutoffDate = new Date();
             cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
             cutoffDate.setHours(0, 0, 0, 0);
@@ -1061,40 +1129,30 @@ function updateTokenTimeChart() {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
-            // 格式化日期並排序
-            let filteredData = data
-                .filter(item => {
-                    // 確保日期格式正確
-                    const itemDate = new Date(item.date);
-                    return !isNaN(itemDate) && itemDate >= cutoffDate;
-                })
-                .sort((a, b) => new Date(a.date) - new Date(b.date));
-            
-            // 生成完整的時間序列，包含當日
+            // 產生完整的日期範圍，包含今日
             const dateRange = generateDateRange(cutoffDate, today);
+            
+            // 處理數據，填充日期範圍
             const dateMap = {};
-            filteredData.forEach(item => {
+            data.forEach(item => {
                 dateMap[item.date] = item.count;
             });
             
-            const dates = dateRange;
             const counts = dateRange.map(date => dateMap[date] || 0);
-            
-            console.log('Token時間使用量圖表數據準備完成:', { dates, counts });
             
             // 創建圖表
             window.charts.tokenTime = new Chart(tokenTimeCanvas, {
                 type: 'line',
                 data: {
-                    labels: dates,
+                    labels: dateRange,
                     datasets: [{
                         label: 'Token使用次數',
                         data: counts,
                         fill: false,
-                        borderColor: 'rgb(54, 162, 235)',
+                        borderColor: 'rgb(75, 192, 192)',
                         tension: 0.1,
-                        pointRadius: 4,
-                        pointBackgroundColor: 'rgb(54, 162, 235)'
+                        pointRadius: 3,
+                        pointBackgroundColor: 'rgb(75, 192, 192)'
                     }]
                 },
                 options: {
@@ -1138,17 +1196,13 @@ function updateTokenTimeChart() {
 // 更新服務隨時間使用量圖表
 function updateServiceTimeChart() {
     const serviceId = document.getElementById('serviceTimeSelector').value;
-    if (!serviceId) {
-        return; // 未選擇服務
-    }
+    if (!serviceId) return;
     
-    // 顯示載入中的提示
-    console.log(`正在載入 Service ID ${serviceId} 的時間使用量數據...`);
+    // 獲取選定的時間範圍
+    const days = document.getElementById('serviceTimeRange').value || 30;
     
     fetchWithAuth(`${API_BASE_URL}/stats/services/${serviceId}/time`)
         .then(data => {
-            console.log('服務時間使用量數據載入成功:', data);
-            
             const serviceTimeCanvas = document.getElementById('serviceTimeChart');
             if (!serviceTimeCanvas) return;
             
@@ -1157,39 +1211,7 @@ function updateServiceTimeChart() {
                 window.charts.serviceTime.destroy();
             }
             
-            // 如果沒有數據，顯示提示
-            if (!data || data.length === 0) {
-                console.warn('沒有可用的服務使用時間數據');
-                // 創建一個空的圖表以顯示"無數據"訊息
-                window.charts.serviceTime = new Chart(serviceTimeCanvas, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            label: '服務使用次數',
-                            data: [],
-                            fill: false,
-                            borderColor: 'rgb(255, 99, 132)'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: '無可用數據'
-                            }
-                        }
-                    }
-                });
-                return;
-            }
-            
-            // 獲取選定的時間範圍
-            const days = document.getElementById('serviceTimeRange').value || 30;
-            
-            // 過濾最近X天的數據
+            // 計算日期範圍（過去X天到今天）
             const cutoffDate = new Date();
             cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
             cutoffDate.setHours(0, 0, 0, 0);
@@ -1197,38 +1219,29 @@ function updateServiceTimeChart() {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
-            // 格式化日期並排序
-            let filteredData = data
-                .filter(item => {
-                    const itemDate = new Date(item.date);
-                    return !isNaN(itemDate) && itemDate >= cutoffDate;
-                })
-                .sort((a, b) => new Date(a.date) - new Date(b.date));
-            
-            // 生成完整的時間序列，包含當日
+            // 產生完整的日期範圍，包含今日
             const dateRange = generateDateRange(cutoffDate, today);
+            
+            // 處理數據，填充日期範圍
             const dateMap = {};
-            filteredData.forEach(item => {
+            data.forEach(item => {
                 dateMap[item.date] = item.count;
             });
             
-            const dates = dateRange;
             const counts = dateRange.map(date => dateMap[date] || 0);
-            
-            console.log('服務時間使用量圖表數據準備完成:', { dates, counts });
             
             // 創建圖表
             window.charts.serviceTime = new Chart(serviceTimeCanvas, {
                 type: 'line',
                 data: {
-                    labels: dates,
+                    labels: dateRange,
                     datasets: [{
                         label: '服務使用次數',
                         data: counts,
                         fill: false,
                         borderColor: 'rgb(255, 99, 132)',
                         tension: 0.1,
-                        pointRadius: 4,
+                        pointRadius: 3,
                         pointBackgroundColor: 'rgb(255, 99, 132)'
                     }]
                 },
@@ -1292,7 +1305,7 @@ function generateColors(count) {
     return colors.slice(0, count);
 }
 
-// 生成日期範圍
+// 生成日期範圍，確保今天是最後一個點
 function generateDateRange(startDate, endDate) {
     const dateArray = [];
     let currentDate = new Date(startDate);
@@ -1302,10 +1315,19 @@ function generateDateRange(startDate, endDate) {
     const endDateTime = new Date(endDate);
     endDateTime.setHours(0, 0, 0, 0);
     
+    // 生成日期範圍直到今天
     while (currentDate <= endDateTime) {
         dateArray.push(currentDate.toISOString().split('T')[0]);
         currentDate.setDate(currentDate.getDate() + 1);
     }
+    
+    // 確保最後一個是今天
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateArray.length > 0 && dateArray[dateArray.length - 1] !== todayStr) {
+        dateArray.push(todayStr);
+    }
+    
+    console.log("生成的日期範圍:", dateArray, "最後一個點是:", dateArray[dateArray.length - 1]);
     return dateArray;
 }
 

@@ -421,3 +421,90 @@ func GetUserServiceTimeStats(c *gin.Context) {
 
 	c.JSON(http.StatusOK, stats)
 }
+
+// 獲取使用者Token隨時間使用量統計
+func GetUserTokenTimeStats(c *gin.Context) {
+	userID := c.Param("user_id")
+
+	type UserTokenTimeStat struct {
+		UserID      uint   `json:"user_id"`
+		Username    string `json:"username"`
+		TokenID     uint   `json:"token_id"`
+		TokenValue  string `json:"token_value"`
+		ServiceID   uint   `json:"service_id"`
+		ServiceName string `json:"service_name"`
+		Date        string `json:"date"`
+		Count       int    `json:"count"`
+		TotalSize   int64  `json:"total_size"`
+	}
+
+	var stats []UserTokenTimeStat
+
+	// 查詢特定使用者的Token隨時間使用情況
+	result := db.DB.Raw(`
+		SELECT 
+			al.user_id, 
+			u.username,
+			al.token_id,
+			t.token_value,
+			al.service_id, 
+			s.name AS service_name,
+			DATE(al.created_at) AS date,
+			COUNT(*) AS count,
+			SUM(al.request_size + al.response_size) AS total_size
+		FROM 
+			access_logs al
+		JOIN 
+			users u ON al.user_id = u.id
+		JOIN 
+			tokens t ON al.token_id = t.id
+		JOIN 
+			services s ON al.service_id = s.id
+		WHERE 
+			al.user_id = ?
+		GROUP BY 
+			al.token_id, date
+		ORDER BY 
+			date ASC, count DESC
+	`, userID).Scan(&stats)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "無法獲取使用者Token時間統計數據", "details": result.Error.Error()})
+		return
+	}
+
+	// 如果要查詢所有用戶
+	if userID == "all" {
+		result = db.DB.Raw(`
+			SELECT 
+				al.user_id, 
+				u.username,
+				al.token_id,
+				t.token_value,
+				al.service_id, 
+				s.name AS service_name,
+				DATE(al.created_at) AS date,
+				COUNT(*) AS count,
+				SUM(al.request_size + al.response_size) AS total_size
+			FROM 
+				access_logs al
+			JOIN 
+				users u ON al.user_id = u.id
+			JOIN 
+				tokens t ON al.token_id = t.id
+			JOIN 
+				services s ON al.service_id = s.id
+			GROUP BY 
+				al.user_id, al.token_id, date
+			ORDER BY 
+				date ASC, count DESC
+		`).Scan(&stats)
+
+		if result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "無法獲取所有使用者Token時間統計數據", "details": result.Error.Error()})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, stats)
+}
