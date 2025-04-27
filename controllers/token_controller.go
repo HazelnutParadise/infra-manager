@@ -81,9 +81,10 @@ func GetToken(c *gin.Context) {
 // 創建Token
 func CreateToken(c *gin.Context) {
 	var tokenRequest struct {
-		UserID    uint      `json:"user_id" binding:"required"`
-		ServiceID uint      `json:"service_id" binding:"required"`
-		ExpiresAt time.Time `json:"expires_at" binding:"required"`
+		UserID      uint       `json:"user_id" binding:"required"`
+		ServiceID   uint       `json:"service_id" binding:"required"`
+		ExpiresAt   *time.Time `json:"expires_at"`
+		IsPermanent bool       `json:"is_permanent"`
 	}
 
 	if err := c.ShouldBindJSON(&tokenRequest); err != nil {
@@ -117,8 +118,19 @@ func CreateToken(c *gin.Context) {
 		TokenValue: tokenValue,
 		UserID:     tokenRequest.UserID,
 		ServiceID:  tokenRequest.ServiceID,
-		ExpiresAt:  tokenRequest.ExpiresAt,
 		IsActive:   true,
+	}
+
+	// 設置過期時間或永久有效
+	if tokenRequest.IsPermanent {
+		// 設置一個很久的未來日期 (100年後)
+		farFuture := time.Now().AddDate(100, 0, 0)
+		token.ExpiresAt = farFuture
+	} else if tokenRequest.ExpiresAt != nil {
+		token.ExpiresAt = *tokenRequest.ExpiresAt
+	} else {
+		// 默認30天有效期
+		token.ExpiresAt = time.Now().AddDate(0, 0, 30)
 	}
 
 	if err := db.DB.Create(&token).Error; err != nil {
@@ -143,8 +155,9 @@ func UpdateToken(c *gin.Context) {
 	}
 
 	var updatedToken struct {
-		ExpiresAt time.Time `json:"expires_at"`
-		IsActive  bool      `json:"is_active"`
+		ExpiresAt   *time.Time `json:"expires_at"`
+		IsActive    bool       `json:"is_active"`
+		IsPermanent bool       `json:"is_permanent"`
 	}
 
 	if err := c.ShouldBindJSON(&updatedToken); err != nil {
@@ -152,11 +165,23 @@ func UpdateToken(c *gin.Context) {
 		return
 	}
 
+	// 更新 IsActive 狀態
+	token.IsActive = updatedToken.IsActive
+
+	// 根據是否永久有效設置過期時間
+	if updatedToken.IsPermanent {
+		// 設置一個很久的未來日期 (100年後)
+		farFuture := time.Now().AddDate(100, 0, 0)
+		token.ExpiresAt = farFuture
+	} else if updatedToken.ExpiresAt != nil {
+		token.ExpiresAt = *updatedToken.ExpiresAt
+	}
+
 	// 更新Token資訊
-	db.DB.Model(&token).Updates(models.Token{
-		ExpiresAt: updatedToken.ExpiresAt,
-		IsActive:  updatedToken.IsActive,
-	})
+	if err := db.DB.Save(&token).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新Token失敗"})
+		return
+	}
 
 	// 重新載入關聯資訊
 	db.DB.Preload("User").Preload("Service").First(&token, token.ID)

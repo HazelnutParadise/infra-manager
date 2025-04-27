@@ -96,8 +96,9 @@ func TokenAuth() gin.HandlerFunc {
 			return
 		}
 
-		// 檢查Token是否過期
-		if token.ExpiresAt.Before(time.Now()) {
+		// 檢查Token是否過期 - 忽略 100 年以上的過期時間 (視為永久有效)
+		farFuture := time.Now().AddDate(99, 0, 0) // 99年後
+		if token.ExpiresAt.Before(time.Now()) && token.ExpiresAt.Before(farFuture) {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Token已過期"})
 			return
 		}

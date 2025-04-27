@@ -84,6 +84,16 @@ function initTokensPage() {
     if (addTokenBtn) {
         addTokenBtn.addEventListener('click', showAddTokenModal);
     }
+    
+    // 初始化過期時間為明天
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowString = tomorrow.toISOString().slice(0, 16);
+    
+    const newTokenExpiresField = document.getElementById('newTokenExpires');
+    if (newTokenExpiresField) {
+        newTokenExpiresField.value = tomorrowString;
+    }
 }
 
 // API調用相關函數
@@ -461,23 +471,37 @@ function deleteService(id) {
 // Token操作函數
 function showAddTokenModal() {
     document.getElementById('addTokenModal').style.display = 'block';
+    document.getElementById('newTokenIsPermanent').checked = false;
+    toggleExpiryDateField();
 }
 
 function addToken() {
     const userId = document.getElementById('newTokenUserId').value;
     const serviceId = document.getElementById('newTokenServiceId').value;
-    const expiresAt = document.getElementById('newTokenExpires').value;
+    const isPermanent = document.getElementById('newTokenIsPermanent').checked;
+    
+    const requestBody = {
+        user_id: parseInt(userId),
+        service_id: parseInt(serviceId),
+        is_permanent: isPermanent
+    };
+    
+    // 如果不是永久有效，則加入過期時間
+    if (!isPermanent) {
+        const expiresAt = document.getElementById('newTokenExpires').value;
+        if (!expiresAt) {
+            alert('請選擇過期時間或勾選永久有效');
+            return;
+        }
+        requestBody.expires_at = new Date(expiresAt).toISOString();
+    }
     
     fetchWithAuth(`${API_BASE_URL}/tokens`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-            user_id: parseInt(userId),
-            service_id: parseInt(serviceId),
-            expires_at: new Date(expiresAt).toISOString()
-        })
+        body: JSON.stringify(requestBody)
     })
     .then(() => {
         document.getElementById('addTokenModal').style.display = 'none';
@@ -486,13 +510,67 @@ function addToken() {
     .catch(error => console.error('添加Token失敗:', error));
 }
 
-// 其他Token相關函數
 function editToken(id) {
     // 獲取Token資料並顯示編輯模態窗口
+    fetchWithAuth(`${API_BASE_URL}/tokens/${id}`)
+        .then(token => {
+            document.getElementById('editTokenID').value = token.id;
+            document.getElementById('editTokenValue').value = token.token_value;
+            document.getElementById('editTokenUser').value = token.user.username;
+            document.getElementById('editTokenService').value = token.service.name;
+            
+            // 判斷是否為永久Token
+            const isPermanent = isPermanentToken(token.expires_at);
+            document.getElementById('editTokenIsPermanent').checked = isPermanent;
+            
+            // 設置過期時間
+            if (!isPermanent) {
+                const expiryDate = new Date(token.expires_at);
+                document.getElementById('editTokenExpires').value = expiryDate.toISOString().slice(0, 16);
+            }
+            
+            document.getElementById('editTokenActive').checked = token.is_active;
+            
+            // 根據是否永久有效顯示/隱藏過期時間欄位
+            toggleEditExpiryDateField();
+            
+            document.getElementById('editTokenModal').style.display = 'block';
+        })
+        .catch(error => console.error('獲取Token資料失敗:', error));
 }
 
 function updateToken() {
-    // 更新Token資料
+    const id = document.getElementById('editTokenID').value;
+    const isPermanent = document.getElementById('editTokenIsPermanent').checked;
+    const isActive = document.getElementById('editTokenActive').checked;
+    
+    const requestBody = {
+        is_active: isActive,
+        is_permanent: isPermanent
+    };
+    
+    // 如果不是永久有效，則加入過期時間
+    if (!isPermanent) {
+        const expiresAt = document.getElementById('editTokenExpires').value;
+        if (!expiresAt) {
+            alert('請選擇過期時間或勾選永久有效');
+            return;
+        }
+        requestBody.expires_at = new Date(expiresAt).toISOString();
+    }
+    
+    fetchWithAuth(`${API_BASE_URL}/tokens/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+    })
+    .then(() => {
+        document.getElementById('editTokenModal').style.display = 'none';
+        fetchTokens();
+    })
+    .catch(error => console.error('更新Token失敗:', error));
 }
 
 function toggleTokenStatus(id, status) {
@@ -510,6 +588,38 @@ function deleteToken(id) {
         })
         .then(() => fetchTokens())
         .catch(error => console.error('刪除Token失敗:', error));
+    }
+}
+
+// 判斷 Token 是否為永久有效
+function isPermanentToken(expiresAt) {
+    const expiryDate = new Date(expiresAt);
+    const now = new Date();
+    // 如果過期時間在 90 年之後，視為永久有效
+    return (expiryDate.getFullYear() - now.getFullYear() >= 90);
+}
+
+// 切換過期日期欄位的顯示/隱藏
+function toggleExpiryDateField() {
+    const isPermanent = document.getElementById('newTokenIsPermanent').checked;
+    const expiresAtGroup = document.getElementById('expiresAtGroup');
+    
+    if (isPermanent) {
+        expiresAtGroup.style.display = 'none';
+    } else {
+        expiresAtGroup.style.display = 'block';
+    }
+}
+
+// 切換編輯模式中過期日期欄位的顯示/隱藏
+function toggleEditExpiryDateField() {
+    const isPermanent = document.getElementById('editTokenIsPermanent').checked;
+    const expiresAtGroup = document.getElementById('editExpiresAtGroup');
+    
+    if (isPermanent) {
+        expiresAtGroup.style.display = 'none';
+    } else {
+        expiresAtGroup.style.display = 'block';
     }
 }
 
