@@ -31,6 +31,8 @@ func SetupRouter() *gin.Engine {
 
 	// 靜態文件服務
 	r.Static("/static", "./static")
+	// robots.txt，告訴搜尋引擎不要索引 /use/ 路徑
+	r.StaticFile("/robots.txt", "./static/robots.txt")
 
 	// 管理介面HTML頁面
 	r.LoadHTMLGlob("templates/*")
@@ -139,17 +141,19 @@ func SetupRouter() *gin.Engine {
 	// API代理路由 - 使用TokenAuth中間件處理
 	// 主要路由移至 /use/*，但保留 /api/* 作為相容備援
 	serviceGroupUse := r.Group("/use")
-	serviceGroupUse.Any("/*path", middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
+	serviceGroupUse.Any("/*path", middlewares.NoIndex(), middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
 
 	// 保留舊的 /api/* 路徑以便相容舊有的客戶端
 	// 但統一回傳 301 Moved Permanently，導向新的 /use/* 路徑
 	serviceGroupOld := r.Group("/api")
-	serviceGroupOld.Any("/*path", func(c *gin.Context) {
+	serviceGroupOld.Any("/*path", middlewares.NoIndex(), func(c *gin.Context) {
 		// 保留原本的 path 與 query string
 		target := "/use" + c.Param("path")
 		if c.Request.URL.RawQuery != "" {
 			target += "?" + c.Request.URL.RawQuery
 		}
+		// 明確在重導前標示不要索引，避免舊有 /api/ 被搜尋引擎記錄
+		c.Header("X-Robots-Tag", "noindex, nofollow")
 		c.Redirect(http.StatusMovedPermanently, target)
 	})
 

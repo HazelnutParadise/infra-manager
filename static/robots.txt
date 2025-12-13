@@ -1,0 +1,8 @@
+
+User-agent: *
+Disallow: /use/
+Disallow: /api/
+
+# Allow other static assets
+Allow: /static/
+

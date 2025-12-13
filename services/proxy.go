@@ -124,10 +124,12 @@ func ProxyRequest(c *gin.Context) {
 		}
 	}
 
-	// 添加禁止快取的標頭
+	// 添加禁止快取與 SEO 優先的標頭
 	c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 	c.Header("Pragma", "no-cache")
 	c.Header("Expires", "0")
+	// 防止搜尋引擎索引經由代理的內容
+	c.Header("X-Robots-Tag", "noindex, nofollow")
 
 	// 如果是 HTML 或 CSS/JavaScript，嘗試替換內部主機 (例如 ai:8080) 為代理路徑 (/use/<service.Name>)
 	contentType := proxyResp.Header.Get("Content-Type")
@@ -163,6 +165,20 @@ func ProxyRequest(c *gin.Context) {
 			bodyStr = strings.ReplaceAll(bodyStr, backendHost, proxyPrefix)
 		}
 
+		// 在 html 中加入 meta robots 標籤，讓搜尋引擎不要索引
+		if strings.Contains(contentType, "text/html") {
+			robotsRe := regexp.MustCompile(`(?i)<meta\s+name=["']robots["'][^>]*>`)
+			if !robotsRe.MatchString(bodyStr) {
+				// 尋找 head 標籤並在前面插入
+				headRe := regexp.MustCompile(`(?i)<head[^>]*>`)
+				if headRe.MatchString(bodyStr) {
+					bodyStr = headRe.ReplaceAllString(bodyStr, headRe.FindString(bodyStr)+"\n    <meta name=\"robots\" content=\"noindex, nofollow\">")
+				} else {
+					// fallback: 插入到文件開頭
+					bodyStr = "<meta name=\"robots\" content=\"noindex, nofollow\">\n" + bodyStr
+				}
+			}
+		}
 		bodyToSend = []byte(bodyStr)
 		// 移除 Content-Length 以讓 gin 自動計算
 		c.Writer.Header().Del("Content-Length")
