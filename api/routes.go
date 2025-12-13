@@ -146,16 +146,7 @@ func SetupRouter() *gin.Engine {
 	// 保留舊的 /api/* 路徑以便相容舊有的客戶端
 	// 但統一回傳 301 Moved Permanently，導向新的 /use/* 路徑
 	serviceGroupOld := r.Group("/api")
-	serviceGroupOld.Any("/*path", middlewares.NoIndex(), func(c *gin.Context) {
-		// 保留原本的 path 與 query string
-		target := "/use" + c.Param("path")
-		if c.Request.URL.RawQuery != "" {
-			target += "?" + c.Request.URL.RawQuery
-		}
-		// 明確在重導前標示不要索引，避免舊有 /api/ 被搜尋引擎記錄
-		c.Header("X-Robots-Tag", "noindex, nofollow")
-		c.Redirect(http.StatusMovedPermanently, target)
-	})
+	serviceGroupOld.Any("/*path", middlewares.NoIndex(), middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
 
 	return r
 }
