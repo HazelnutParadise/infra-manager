@@ -153,6 +153,104 @@ body {
   padding: 1.8rem;
 }
 
+/* 儀表板專用樣式 */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.6rem;
+}
+
+.stat-card.compact {
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  box-shadow: 0 6px 18px rgba(20, 40, 70, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card.compact::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-light));
+}
+
+.stat-icon {
+  font-size: 2rem;
+  color: var(--primary);
+  margin-right: 1rem;
+  opacity: 0.8;
+}
+
+.stat-card-body {
+  text-align: center;
+  flex: 1;
+}
+
+.stat-title {
+  color: var(--secondary);
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 0.35rem;
+}
+
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.stat-trend {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--secondary);
+}
+
+.card-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--secondary);
+}
+
+.chart-container {
+  min-height: 260px;
+  position: relative;
+}
+
+@media (max-width: 992px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+}
+
 /* 表格樣式 */
 .table {
   width: 100%;
@@ -609,9 +707,13 @@ body {
 
 /* 圖表容器 */
 .chart-container {
-  margin-top: 1.5rem;
-  height: 400px;
+  margin-top: 1rem;
+  height: 320px; /* 降低高度以便更多圖表可見 */
   position: relative;
+  padding: 8px;
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 /* 圖表類型切換按鈕 */
@@ -786,5 +888,177 @@ body {
 
   .stats-container {
     grid-template-columns: 1fr;
+  }
+}
+
+/* 新增儀表板樣式 */
+.stats-overview {
+  margin-bottom: 2rem;
+}
+
+.stats-overview h2 {
+  color: var(--primary);
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.charts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.chart-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.chart-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.chart-card.primary {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
+}
+
+.chart-card.secondary {
+  background: linear-gradient(135deg, #ffffff, #f0f4f8);
+}
+
+.chart-card.analysis {
+  background: linear-gradient(135deg, #ffffff, #f5f7fa);
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--primary);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-title i {
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+.trends-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.trend-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.trend-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* 使 Token 使用量趨勢卡片的篩選器靠右 */
+.trends-section .trend-card:nth-child(2) .card-header .filter-container {
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  /* 手機或窄版時改為寬度 100% 並靠右對齊內容 */
+  .trends-section .trend-card:nth-child(2) .card-header .filter-container {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* 響應式調整 */
+@media (max-width: 1200px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card.primary {
+    grid-column: 1;
+  }
+
+  .trends-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .charts-grid,
+  .trends-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Token 管理頁：將「使用者」欄與「狀態」欄固定為 4 個字寬（4ch） */
+.token-management .table th:nth-child(3),
+.token-management .table td:nth-child(3) {
+  width: 4ch;
+  min-width: 4ch;
+  max-width: 8ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.token-management .table th:nth-child(7),
+.token-management .table td:nth-child(7) {
+  width: 4ch;
+  min-width: 4ch;
+  max-width: 6ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  /* 小螢幕上放寬欄位限制，避免內容被過度裁切 */
+  .token-management .table th:nth-child(3),
+  .token-management .table td:nth-child(3),
+  .token-management .table th:nth-child(7),
+  .token-management .table td:nth-child(7) {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    white-space: normal;
   }
 }

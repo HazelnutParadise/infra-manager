@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ .title }}</title>
     <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 </head>
@@ -24,158 +25,191 @@
     </nav>
 
     <div class="container">
-        <h1>儀表板</h1>
-
-        <div class="stats-container">
-            <div class="stat-card">
-                <h3>最近 30 天 API 請求次數</h3>
-                <div class="stat-value" id="totalRequests">0</div>
-            </div>
-            <div class="stat-card">
-                <h3>已啟用的使用者總數</h3>
-                <div class="stat-value" id="activeUsers">0</div>
-            </div>
-            <div class="stat-card">
-                <h3>已啟用的服務總數</h3>
-                <div class="stat-value" id="activeServices">0</div>
-            </div>
-            <div class="stat-card">
-                <h3>已啟用的 Token 總數</h3>
-                <div class="stat-value" id="activeTokens">0</div>
-            </div>
-        </div>
-
-        <!-- 每日請求數量趨勢 -->
-        <div class="card mt-5">
-            <div class="card-header">
-                <h2 class="card-title">每日請求數量趨勢</h2>
-                <div class="time-selector">
-                    <select id="dailyRequestsTimeRange" onchange="updateDailyRequestsChart()">
-                        <option value="7">過去 7 天</option>
-                        <option value="30" selected>過去 30 天</option>
-                        <option value="90">過去 90 天</option>
-                    </select>
+        <!-- 統計卡片區塊 -->
+        <div class="stats-overview">
+            <h2><i class="fas fa-chart-line"></i> 關鍵指標</h2>
+            <div class="dashboard-grid">
+                <div class="stat-card compact">
+                    <div class="stat-icon">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <div class="stat-card-body">
+                        <div class="stat-title">API 請求（30 天總計）</div>
+                        <div class="stat-value" id="totalRequests">0</div>
+                        <div class="stat-trend" id="totalRequestsTrend"></div>
+                    </div>
                 </div>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="dailyRequestsChart"></canvas>
+                <div class="stat-card compact">
+                    <div class="stat-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="stat-card-body">
+                        <div class="stat-title">啟用使用者</div>
+                        <div class="stat-value" id="activeUsers">0</div>
+                        <div class="stat-trend" id="activeUsersTrend"></div>
+                    </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- 服務使用量統計 -->
-        <div class="card mt-5">
-            <div class="card-header">
-                <h2 class="card-title">服務使用量統計</h2>
-                <div class="chart-type-selector">
-                    <button class="btn btn-sm chart-type-btn active"
-                        onclick="switchChartType('serviceUsage', 'bar')">長條圖</button>
-                    <button class="btn btn-sm chart-type-btn"
-                        onclick="switchChartType('serviceUsage', 'pie')">圓餅圖</button>
+                <div class="stat-card compact">
+                    <div class="stat-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="stat-card-body">
+                        <div class="stat-title">啟用服務</div>
+                        <div class="stat-value" id="activeServices">0</div>
+                        <div class="stat-trend" id="activeServicesTrend"></div>
+                    </div>
                 </div>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="serviceUsageChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- 服務使用量趨勢 -->
-        <div class="card mt-5">
-            <div class="card-header">
-                <h2 class="card-title">服務使用量趨勢</h2>
-                <div class="filter-container">
-                    <select id="serviceTimeSelector" onchange="updateServiceTimeChart()">
-                        <option value="all" selected>全部服務</option>
-                        <!-- 服務選項由JavaScript動態填充 -->
-                    </select>
-                    <select id="serviceTimeRange" onchange="updateServiceTimeChart()">
-                        <option value="7">過去 7 天</option>
-                        <option value="30" selected>過去 30 天</option>
-                        <option value="90">過去 90 天</option>
-                    </select>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="serviceTimeChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- 使用者服務使用量 -->
-        <div class="card mt-5">
-            <div class="card-header">
-                <h2 class="card-title">使用者服務使用量</h2>
-                <div class="filter-container">
-                    <select id="userServiceSelector" onchange="updateUserServiceChart()">
-                        <option value="all" selected>全部使用者</option>
-                        <!-- 使用者選項由JavaScript動態填充 -->
-                    </select>
-                    <div class="chart-type-selector">
-                        <button class="btn btn-sm chart-type-btn active"
-                            onclick="switchChartType('userService', 'bar')">長條圖</button>
-                        <button class="btn btn-sm chart-type-btn"
-                            onclick="switchChartType('userService', 'pie')">圓餅圖</button>
-                        <button class="btn btn-sm chart-type-btn"
-                            onclick="switchChartType('userService', 'line')">折線圖</button>
+                <div class="stat-card compact">
+                    <div class="stat-icon">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <div class="stat-card-body">
+                        <div class="stat-title">啟用 Token</div>
+                        <div class="stat-value" id="activeTokens">0</div>
+                        <div class="stat-trend" id="activeTokensTrend"></div>
                     </div>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="userServiceChart"></canvas>
-                </div>
-            </div>
         </div>
 
-        <!-- 使用者Token使用量 -->
-        <div class="card mt-5">
-            <div class="card-header">
-                <h2 class="card-title">使用者 Token 使用量</h2>
-                <div class="filter-container">
-                    <select id="userTokenSelector" onchange="updateUserTokenChart()">
-                        <option value="all" selected>全部使用者</option>
-                        <!-- 使用者選項由JavaScript動態填充 -->
-                    </select>
-                    <div class="chart-type-selector">
-                        <button class="btn btn-sm chart-type-btn active"
-                            onclick="switchChartType('userToken', 'bar')">長條圖</button>
-                        <button class="btn btn-sm chart-type-btn"
-                            onclick="switchChartType('userToken', 'pie')">圓餅圖</button>
-                        <button class="btn btn-sm chart-type-btn"
-                            onclick="switchChartType('userToken', 'line')">折線圖</button>
+        <!-- 圖表區塊（重新排序：趨勢優先 -> 分析） -->
+        <div class="charts-section">
+            <!-- 主要趨勢圖表（全寬） -->
+            <div class="chart-card primary">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fas fa-chart-area"></i> 每日請求數量趨勢</h2>
+                    <div class="time-selector">
+                        <select id="dailyRequestsTimeRange" onchange="updateDailyRequestsChart()">
+                            <option value="7">過去 7 天</option>
+                            <option value="30" selected>過去 30 天</option>
+                            <option value="90">過去 90 天</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="dailyRequestsChart"></canvas>
                     </div>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="userTokenChart"></canvas>
-                </div>
-            </div>
-        </div>
 
-        <!-- Token使用量隨時間變化 -->
-        <div class="card mt-5">
-            <div class="card-header">
-                <h2 class="card-title">Token 使用量隨時間變化</h2>
-                <div class="filter-container">
-                    <select id="tokenTimeSelector" onchange="updateTokenTimeChart()">
-                        <option value="all" selected>全部 Token</option>
-                        <!-- Token選項由JavaScript動態填充 -->
-                    </select>
-                    <select id="tokenTimeRange" onchange="updateTokenTimeChart()">
-                        <option value="7">過去 7 天</option>
-                        <option value="30" selected>過去 30 天</option>
-                        <option value="90">過去 90 天</option>
-                    </select>
+            <!-- 時間趨勢（並排顯示：服務、Token） -->
+            <div class="trends-section">
+                <div class="trend-card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-history"></i> 服務使用量趨勢</h2>
+                        <div class="filter-container">
+                            <select id="serviceTimeSelector" onchange="updateServiceTimeChart()">
+                                <option value="all" selected>全部服務</option>
+                            </select>
+                            <select id="serviceTimeRange" onchange="updateServiceTimeChart()">
+                                <option value="7">過去 7 天</option>
+                                <option value="30" selected>過去 30 天</option>
+                                <option value="90">過去 90 天</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="serviceTimeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="trend-card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-clock"></i> Token 使用量趨勢</h2>
+                        <div class="filter-container">
+                            <select id="tokenTimeSelector" onchange="updateTokenTimeChart()">
+                                <option value="all" selected>全部 Token</option>
+                            </select>
+                            <select id="tokenTimeRange" onchange="updateTokenTimeChart()">
+                                <option value="7">過去 7 天</option>
+                                <option value="30" selected>過去 30 天</option>
+                                <option value="90">過去 90 天</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="tokenTimeChart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="tokenTimeChart"></canvas>
+
+            <!-- 分析類圖表（並排與全寬混合） -->
+            <div class="charts-grid">
+                <div class="chart-card secondary">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-pie-chart"></i> 服務使用量統計</h2>
+                        <div class="chart-type-selector">
+                            <button class="btn btn-sm chart-type-btn active"
+                                onclick="switchChartType('serviceUsage', 'bar')">
+                                <i class="fas fa-chart-bar"></i>
+                            </button>
+                            <button class="btn btn-sm chart-type-btn" onclick="switchChartType('serviceUsage', 'pie')">
+                                <i class="fas fa-chart-pie"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="serviceUsageChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-card analysis">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-users-cog"></i> 使用者服務使用量</h2>
+                        <div class="filter-container">
+                            <select id="userServiceSelector" onchange="updateUserServiceChart()">
+                                <option value="all" selected>全部使用者</option>
+                            </select>
+                            <div class="chart-type-selector">
+                                <button class="btn btn-sm chart-type-btn active"
+                                    onclick="switchChartType('userService', 'bar')"><i
+                                        class="fas fa-chart-bar"></i></button>
+                                <button class="btn btn-sm chart-type-btn"
+                                    onclick="switchChartType('userService', 'pie')"><i
+                                        class="fas fa-chart-pie"></i></button>
+                                <button class="btn btn-sm chart-type-btn"
+                                    onclick="switchChartType('userService', 'line')"><i
+                                        class="fas fa-chart-line"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="userServiceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 使用者 Token（全寬） -->
+            <div class="chart-card primary">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fas fa-key"></i> 使用者 Token 使用量</h2>
+                    <div class="filter-container">
+                        <select id="userTokenSelector" onchange="updateUserTokenChart()">
+                            <option value="all" selected>全部使用者</option>
+                        </select>
+                        <div class="chart-type-selector">
+                            <button class="btn btn-sm chart-type-btn active"
+                                onclick="switchChartType('userToken', 'bar')"><i class="fas fa-chart-bar"></i></button>
+                            <button class="btn btn-sm chart-type-btn" onclick="switchChartType('userToken', 'pie')"><i
+                                    class="fas fa-chart-pie"></i></button>
+                            <button class="btn btn-sm chart-type-btn" onclick="switchChartType('userToken', 'line')"><i
+                                    class="fas fa-chart-line"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="userTokenChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>

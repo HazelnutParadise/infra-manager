@@ -3,6 +3,19 @@
 // 全局變數
 const API_BASE_URL = '/admin';
 
+// Helper: 確保 select 中不會重複加入相同 value 的 option
+function ensureSelectOption(selectElem, value, text) {
+    if (!selectElem) return false;
+    const valStr = String(value);
+    // 如果已存在相同 value 的 option，則跳過
+    if (selectElem.querySelector(`option[value="${valStr}"]`)) return false;
+    const opt = document.createElement('option');
+    opt.value = valStr;
+    opt.textContent = text;
+    selectElem.appendChild(opt);
+    return true;
+}
+
 // DOM Ready事件
 document.addEventListener('DOMContentLoaded', function () {
     // 根據當前頁面執行相應的初始化
@@ -272,31 +285,20 @@ function fillUserSelectors(users) {
         // 只使用活躍用戶
         const activeUsers = users.filter(user => user.is_active);
 
-        // 添加用戶選項
+        // 添加用戶選項（確保不重複）
         activeUsers.forEach(user => {
-            const option1 = document.createElement('option');
-            option1.value = user.id;
-            option1.textContent = user.username;
-            userServiceSelector.appendChild(option1);
-
-            const option2 = document.createElement('option');
-            option2.value = user.id;
-            option2.textContent = user.username;
-            userTokenSelector.appendChild(option2);
-            // 同步填充 Token 篩選器
-            if (filterTokenUser) {
-                const opt = document.createElement('option');
-                opt.value = user.id;
-                opt.textContent = user.username;
-                filterTokenUser.appendChild(opt);
-            }
+            ensureSelectOption(userServiceSelector, user.id, user.username);
+            ensureSelectOption(userTokenSelector, user.id, user.username);
+            if (filterTokenUser) ensureSelectOption(filterTokenUser, user.id, user.username);
         });
 
-        // 預設顯示全部
-        userServiceSelector.value = 'all';
-        userTokenSelector.value = 'all';
+        // 若未設定預設值，嘗試保留或設定為 'all'
+        try {
+            if (!Array.from(userServiceSelector.options).some(o => o.value === 'all')) userServiceSelector.value = userServiceSelector.options[0]?.value || 'all';
+            if (!Array.from(userTokenSelector.options).some(o => o.value === 'all')) userTokenSelector.value = userTokenSelector.options[0]?.value || 'all';
+        } catch (e) { /* ignore */ }
 
-        console.log(`填充了 ${activeUsers.length} 個用戶到選擇器中`);
+        console.log(`填充了 ${activeUsers.length} 個用戶到選擇器中（不重複）`);
     }
 }
 
@@ -314,25 +316,18 @@ function fillServiceSelectors(services) {
         // 只使用活躍服務
         const activeServices = services.filter(service => service.is_active);
 
-        // 添加服務選項
+        // 添加服務選項（避免重複）
         activeServices.forEach(service => {
-            const option = document.createElement('option');
-            option.value = service.id;
-            option.textContent = service.name;
-            serviceTimeSelector.appendChild(option);
-            // 同步填充 Token 篩選器
-            if (filterTokenService) {
-                const opt = document.createElement('option');
-                opt.value = service.id;
-                opt.textContent = service.name;
-                filterTokenService.appendChild(opt);
-            }
+            ensureSelectOption(serviceTimeSelector, service.id, service.name);
+            if (filterTokenService) ensureSelectOption(filterTokenService, service.id, service.name);
         });
 
-        // 預設顯示全部
-        serviceTimeSelector.value = 'all';
+        // 若未設定預設值，嘗試保留或設定為 'all'
+        try {
+            if (!Array.from(serviceTimeSelector.options).some(o => o.value === 'all')) serviceTimeSelector.value = serviceTimeSelector.options[0]?.value || 'all';
+        } catch (e) { /* ignore */ }
 
-        console.log(`填充了 ${activeServices.length} 個服務到選擇器中`);
+        console.log(`填充了 ${activeServices.length} 個服務到選擇器中（不重複）`);
     }
 }
 
@@ -531,10 +526,7 @@ function fillUserDropdown(users) {
     if (filterTokenUser) {
         users.forEach(user => {
             if (user.is_active) {
-                const opt = document.createElement('option');
-                opt.value = user.id;
-                opt.textContent = user.username;
-                filterTokenUser.appendChild(opt);
+                ensureSelectOption(filterTokenUser, user.id, user.username);
             }
         });
         console.log(`填充 filterTokenUser，使用者數: ${users.filter(u => u.is_active).length}`);
@@ -561,10 +553,7 @@ function fillServiceDropdown(services) {
     if (filterTokenService) {
         services.forEach(service => {
             if (service.is_active) {
-                const opt = document.createElement('option');
-                opt.value = service.id;
-                opt.textContent = service.name;
-                filterTokenService.appendChild(opt);
+                ensureSelectOption(filterTokenService, service.id, service.name);
             }
         });
         console.log(`填充 filterTokenService，服務數: ${services.filter(s => s.is_active).length}`);
@@ -649,12 +638,9 @@ function syncTokenFiltersFromTokens(tokens) {
             if (t.user && t.user.id && t.user.username) usersMap[t.user.id] = t.user.username;
         });
         Object.keys(usersMap).forEach(id => {
-            const opt = document.createElement('option');
-            opt.value = id;
-            opt.textContent = usersMap[id];
-            userSelect.appendChild(opt);
+            ensureSelectOption(userSelect, id, usersMap[id]);
         });
-        console.log(`從 tokens 補充 filterTokenUser，新增 ${Object.keys(usersMap).length} 個項目`);
+        console.log(`從 tokens 補充 filterTokenUser，新增 ${Object.keys(usersMap).length} 個項目（避免重複）`);
     }
 
     if (serviceSelect && serviceSelect.options.length <= 1) {
@@ -663,12 +649,9 @@ function syncTokenFiltersFromTokens(tokens) {
             if (t.service && t.service.id && t.service.name) servicesMap[t.service.id] = t.service.name;
         });
         Object.keys(servicesMap).forEach(id => {
-            const opt = document.createElement('option');
-            opt.value = id;
-            opt.textContent = servicesMap[id];
-            serviceSelect.appendChild(opt);
+            ensureSelectOption(serviceSelect, id, servicesMap[id]);
         });
-        console.log(`從 tokens 補充 filterTokenService，新增 ${Object.keys(servicesMap).length} 個項目`);
+        console.log(`從 tokens 補充 filterTokenService，新增 ${Object.keys(servicesMap).length} 個項目（避免重複）`);
     }
 }
 
@@ -806,8 +789,9 @@ function updateDailyRequestsChart() {
                         data: counts,
                         fill: false,
                         borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1,
-                        pointRadius: 3,
+                        tension: 0.4,
+                        cubicInterpolationMode: 'monotone',
+                        pointRadius: 2,
                         pointBackgroundColor: 'rgb(75, 192, 192)'
                     }]
                 },
@@ -935,6 +919,38 @@ function renderRecentStats(stats) {
     if (elemActiveUsers) elemActiveUsers.textContent = totalUsers;
     if (elemActiveServices) elemActiveServices.textContent = totalServices;
     if (elemActiveTokens) elemActiveTokens.textContent = totalTokens;
+
+    // 顯示簡易趨勢：比較最近7天與之前7天
+    function calcRollingChange(arr, field, windowDays = 7) {
+        if (!arr || arr.length < windowDays * 2) return null;
+        const len = arr.length;
+        const lastWindow = arr.slice(len - windowDays, len);
+        const prevWindow = arr.slice(len - (2 * windowDays), len - windowDays);
+        const sum = (a) => a.reduce((s, it) => s + (it[field] || 0), 0);
+        const lastSum = sum(lastWindow);
+        const prevSum = sum(prevWindow);
+        if (prevSum === 0) return null;
+        const pct = ((lastSum - prevSum) / prevSum) * 100;
+        return { pct: pct, lastSum, prevSum };
+    }
+
+    function setTrend(elemId, change) {
+        const el = document.getElementById(elemId);
+        if (!el) return;
+        if (!change) {
+            el.textContent = '';
+            return;
+        }
+        const up = change.pct >= 0;
+        const arrow = up ? '▲' : '▼';
+        const cls = up ? 'text-success' : 'text-danger';
+        el.innerHTML = `<span class="${cls}">${arrow} ${Math.abs(change.pct).toFixed(1)}% (近7天)</span>`;
+    }
+
+    setTrend('totalRequestsTrend', calcRollingChange(stats, 'count', 7));
+    setTrend('activeUsersTrend', calcRollingChange(stats.map(d => ({ user_count: d.user_count || 0 })), 'user_count', 7));
+    setTrend('activeServicesTrend', calcRollingChange(stats.map(d => ({ service_count: d.service_count || 0 })), 'service_count', 7));
+    setTrend('activeTokensTrend', calcRollingChange(stats.map(d => ({ token_count: d.token_count || 0 })), 'token_count', 7));
 }
 
 // 渲染服務使用量統計圖表
@@ -957,7 +973,7 @@ function renderServicesUsageChart(stats) {
     // 準備圖表數據
     const labels = stats.map(s => s.service_name);
     const data = stats.map(s => s.count);
-    const backgroundColors = generateColors(stats.length);
+    const backgroundColors = getPalette(stats.length);
 
     // 根據選擇的圖表類型創建圖表
     const chartType = window.chartTypes.serviceUsage || 'bar';
@@ -1053,7 +1069,7 @@ function updateUserServiceChart() {
 
                     // 準備數據集
                     const datasets = [];
-                    const colors = generateColors(Object.keys(servicesMap).length);
+                    const colors = getPalette(Object.keys(servicesMap).length);
 
                     Object.keys(servicesMap).forEach((serviceId, idx) => {
                         const service = servicesMap[serviceId];
@@ -1085,7 +1101,7 @@ function updateUserServiceChart() {
             fetchServicesUsageStats().then(data => {
                 const labels = data.map(d => d.service_name);
                 const counts = data.map(d => d.count);
-                const colors = generateColors(labels.length);
+                const colors = getPalette(labels.length);
                 const total = counts.reduce((acc, val) => acc + val, 0);
 
                 window.charts.userService = new Chart(userServiceCanvas, {
@@ -1140,7 +1156,7 @@ function updateUserServiceChart() {
 
                 // 準備數據集
                 const datasets = [];
-                const colors = generateColors(Object.keys(servicesMap).length);
+                const colors = getPalette(Object.keys(servicesMap).length);
 
                 Object.keys(servicesMap).forEach((serviceId, idx) => {
                     const service = servicesMap[serviceId];
@@ -1152,8 +1168,9 @@ function updateUserServiceChart() {
                         fill: false,
                         borderColor: colors[idx],
                         backgroundColor: colors[idx],
-                        tension: 0.1,
-                        pointRadius: 3,
+                        tension: 0.4,
+                        cubicInterpolationMode: 'monotone',
+                        pointRadius: 2,
                         pointBackgroundColor: colors[idx]
                     });
                 });
@@ -1209,7 +1226,7 @@ function updateUserServiceChart() {
             });
             const labels = Object.values(serviceMap).map(s => s.name);
             const counts = Object.values(serviceMap).map(s => s.count);
-            const colors = generateColors(labels.length);
+            const colors = getPalette(labels.length);
 
             // 計算總數(用於計算百分比)
             const total = counts.reduce((acc, val) => acc + val, 0);
@@ -1293,7 +1310,7 @@ function updateUserTokenChart() {
                     const dateRange = generateDateRange(cutoffDate, today);
 
                     const datasets = [];
-                    const colors = generateColors(results.length);
+                    const colors = getPalette(results.length);
                     results.forEach((r, idx) => {
                         const map = {};
                         r.data.forEach(item => { map[item.date] = item.count; });
@@ -1304,8 +1321,9 @@ function updateUserTokenChart() {
                             fill: false,
                             borderColor: colors[idx],
                             backgroundColor: colors[idx],
-                            tension: 0.1,
-                            pointRadius: 3
+                            tension: 0.4,
+                            cubicInterpolationMode: 'monotone',
+                            pointRadius: 2
                         });
                     });
 
@@ -1348,7 +1366,7 @@ function updateUserTokenChart() {
 
                 // 準備數據集
                 const datasets = [];
-                const colors = generateColors(Object.keys(tokensMap).length);
+                const colors = getPalette(Object.keys(tokensMap).length);
 
                 Object.keys(tokensMap).forEach((tokenId, idx) => {
                     const token = tokensMap[tokenId];
@@ -1360,8 +1378,9 @@ function updateUserTokenChart() {
                         fill: false,
                         borderColor: colors[idx],
                         backgroundColor: colors[idx],
-                        tension: 0.1,
-                        pointRadius: 3,
+                        tension: 0.4,
+                        cubicInterpolationMode: 'monotone',
+                        pointRadius: 2,
                         pointBackgroundColor: colors[idx]
                     });
                 });
@@ -1411,7 +1430,7 @@ function updateUserTokenChart() {
         fetchUserTokenStats(userId).then(data => {
             const labels = data.map(d => `${d.token_value.substring(0, 8)}... - ${d.service_name}`);
             const counts = data.map(d => d.count);
-            const colors = generateColors(data.length);
+            const colors = getPalette(data.length);
 
             // 計算總數(用於計算百分比)
             const total = counts.reduce((acc, val) => acc + val, 0);
@@ -1497,7 +1516,7 @@ function updateTokenTimeChart() {
                 const dateRange = generateDateRange(cutoffDate, today);
 
                 const datasets = [];
-                const colors = generateColors(results.length);
+                const colors = getPalette(results.length);
 
                 results.forEach((r, idx) => {
                     const map = {};
@@ -1564,8 +1583,9 @@ function updateTokenTimeChart() {
                         data: counts,
                         fill: false,
                         borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1,
-                        pointRadius: 3,
+                        tension: 0.4,
+                        cubicInterpolationMode: 'monotone',
+                        pointRadius: 2,
                         pointBackgroundColor: 'rgb(75, 192, 192)'
                     }]
                 },
@@ -1636,7 +1656,7 @@ function updateServiceTimeChart() {
                 const dateRange = generateDateRange(cutoffDate, today);
 
                 const datasets = [];
-                const colors = generateColors(results.length);
+                const colors = getPalette(results.length);
 
                 results.forEach((r, idx) => {
                     const map = {};
@@ -1647,8 +1667,9 @@ function updateServiceTimeChart() {
                         data: dataArr,
                         fill: false,
                         borderColor: colors[idx],
-                        tension: 0.1,
-                        pointRadius: 3,
+                        tension: 0.4,
+                        cubicInterpolationMode: 'monotone',
+                        pointRadius: 2,
                         pointBackgroundColor: colors[idx]
                     });
                 });
@@ -1703,8 +1724,9 @@ function updateServiceTimeChart() {
                         data: counts,
                         fill: false,
                         borderColor: 'rgb(255, 99, 132)',
-                        tension: 0.1,
-                        pointRadius: 3,
+                        tension: 0.4,
+                        cubicInterpolationMode: 'monotone',
+                        pointRadius: 2,
                         pointBackgroundColor: 'rgb(255, 99, 132)'
                     }]
                 },
@@ -1780,6 +1802,61 @@ function generateColors(count) {
     }
 
     return colors.slice(0, count);
+}
+
+// Chart.js 全域美化設定
+// 數字格式化（千分位）
+function formatNumber(value) {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'number') return new Intl.NumberFormat('zh-TW').format(value);
+    // 若為字串數字，嘗試轉換
+    const n = Number(value);
+    if (!isNaN(n)) return new Intl.NumberFormat('zh-TW').format(n);
+    return String(value);
+}
+
+// End formatNumber
+if (window.Chart) {
+    // 基本字體與色彩
+    Chart.defaults.font.family = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#2b3a4a';
+
+    // 外觀與行為
+    Chart.defaults.maintainAspectRatio = false;
+    Chart.defaults.elements.point.radius = 2;
+    Chart.defaults.elements.line.tension = 0.3;
+    Chart.defaults.plugins.legend.position = 'bottom';
+    Chart.defaults.animation = { duration: 700, easing: 'easeOutQuart' };
+
+    // Tooltip 行為與格式化（使用千分位）
+    Chart.defaults.plugins.tooltip.mode = 'index';
+    Chart.defaults.plugins.tooltip.intersect = false;
+    Chart.defaults.plugins.tooltip.callbacks = Chart.defaults.plugins.tooltip.callbacks || {};
+    Chart.defaults.plugins.tooltip.callbacks.label = function (context) {
+        const val = context.parsed && typeof context.parsed === 'object' ? context.parsed.y : (context.parsed ?? context.raw);
+        const formatted = formatNumber(val);
+        if (context.dataset && context.dataset.label) return `${context.dataset.label}: ${formatted}`;
+        return formatted;
+    };
+}
+
+// 改進預設色盤（更柔和的漸層）
+function getPalette(count) {
+    const base = [
+        'rgba(45,109,163,0.85)',
+        'rgba(76,175,80,0.85)',
+        'rgba(255,159,64,0.85)',
+        'rgba(158,113,255,0.85)',
+        'rgba(255,99,132,0.85)',
+        'rgba(54,162,235,0.85)'
+    ];
+    const palette = [];
+    for (let i = 0; i < count; i++) {
+        const c = base[i % base.length];
+        palette.push(c.replace('0.85', '0.7'));
+    }
+    return palette;
 }
 
 // 生成日期範圍，確保今天是最後一個點
