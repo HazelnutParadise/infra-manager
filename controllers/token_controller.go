@@ -26,8 +26,25 @@ func generateToken() string {
 func GetAllTokens(c *gin.Context) {
 	var tokens []models.Token
 
-	// 預載入相關的使用者和服務資訊
-	result := db.DB.Preload("User").Preload("Service").Find(&tokens)
+	// 支援透過 query 參數過濾: ?user_id=...&service_id=...
+	userIDStr := c.Query("user_id")
+	serviceIDStr := c.Query("service_id")
+
+	query := db.DB.Preload("User").Preload("Service")
+
+	if userIDStr != "" {
+		if userID, err := strconv.Atoi(userIDStr); err == nil {
+			query = query.Where("user_id = ?", userID)
+		}
+	}
+
+	if serviceIDStr != "" {
+		if serviceID, err := strconv.Atoi(serviceIDStr); err == nil {
+			query = query.Where("service_id = ?", serviceID)
+		}
+	}
+
+	result := query.Find(&tokens)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "無法獲取Token列表"})
 		return

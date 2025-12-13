@@ -28,7 +28,7 @@
 
         <div class="stats-container">
             <div class="stat-card">
-                <h3>總API請求次數</h3>
+                <h3>最近 30 天 API 請求次數</h3>
                 <div class="stat-value" id="totalRequests">0</div>
             </div>
             <div class="stat-card">
@@ -40,7 +40,7 @@
                 <div class="stat-value" id="activeServices">0</div>
             </div>
             <div class="stat-card">
-                <h3>已啟用的Token總數</h3>
+                <h3>已啟用的 Token 總數</h3>
                 <div class="stat-value" id="activeTokens">0</div>
             </div>
         </div>
@@ -51,9 +51,9 @@
                 <h2 class="card-title">每日請求數量趨勢</h2>
                 <div class="time-selector">
                     <select id="dailyRequestsTimeRange" onchange="updateDailyRequestsChart()">
-                        <option value="7">過去7天</option>
-                        <option value="30" selected>過去30天</option>
-                        <option value="90">過去90天</option>
+                        <option value="7">過去 7 天</option>
+                        <option value="30" selected>過去 30 天</option>
+                        <option value="90">過去 90 天</option>
                     </select>
                 </div>
             </div>
@@ -88,13 +88,13 @@
                 <h2 class="card-title">服務使用量趨勢</h2>
                 <div class="filter-container">
                     <select id="serviceTimeSelector" onchange="updateServiceTimeChart()">
-                        <option value="">-- 選擇服務 --</option>
+                        <option value="all" selected>全部服務</option>
                         <!-- 服務選項由JavaScript動態填充 -->
                     </select>
                     <select id="serviceTimeRange" onchange="updateServiceTimeChart()">
-                        <option value="7">過去7天</option>
-                        <option value="30" selected>過去30天</option>
-                        <option value="90">過去90天</option>
+                        <option value="7">過去 7 天</option>
+                        <option value="30" selected>過去 30 天</option>
+                        <option value="90">過去 90 天</option>
                     </select>
                 </div>
             </div>
@@ -111,7 +111,7 @@
                 <h2 class="card-title">使用者服務使用量</h2>
                 <div class="filter-container">
                     <select id="userServiceSelector" onchange="updateUserServiceChart()">
-                        <option value="">-- 選擇使用者 --</option>
+                        <option value="all" selected>全部使用者</option>
                         <!-- 使用者選項由JavaScript動態填充 -->
                     </select>
                     <div class="chart-type-selector">
@@ -134,10 +134,10 @@
         <!-- 使用者Token使用量 -->
         <div class="card mt-5">
             <div class="card-header">
-                <h2 class="card-title">使用者Token使用量</h2>
+                <h2 class="card-title">使用者 Token 使用量</h2>
                 <div class="filter-container">
                     <select id="userTokenSelector" onchange="updateUserTokenChart()">
-                        <option value="">-- 選擇使用者 --</option>
+                        <option value="all" selected>全部使用者</option>
                         <!-- 使用者選項由JavaScript動態填充 -->
                     </select>
                     <div class="chart-type-selector">
@@ -160,16 +160,16 @@
         <!-- Token使用量隨時間變化 -->
         <div class="card mt-5">
             <div class="card-header">
-                <h2 class="card-title">Token使用量隨時間變化</h2>
+                <h2 class="card-title">Token 使用量隨時間變化</h2>
                 <div class="filter-container">
                     <select id="tokenTimeSelector" onchange="updateTokenTimeChart()">
-                        <option value="">-- 選擇Token --</option>
+                        <option value="all" selected>全部 Token</option>
                         <!-- Token選項由JavaScript動態填充 -->
                     </select>
                     <select id="tokenTimeRange" onchange="updateTokenTimeChart()">
-                        <option value="7">過去7天</option>
-                        <option value="30" selected>過去30天</option>
-                        <option value="90">過去90天</option>
+                        <option value="7">過去 7 天</option>
+                        <option value="30" selected>過去 30 天</option>
+                        <option value="90">過去 90 天</option>
                     </select>
                 </div>
             </div>
