@@ -137,9 +137,21 @@ func SetupRouter() *gin.Engine {
 	}
 
 	// API代理路由 - 使用TokenAuth中間件處理
-	// 將代理服務移至 /api/* 路徑下
-	serviceGroup := r.Group("/api")
-	serviceGroup.Any("/*path", middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
+	// 主要路由移至 /use/*，但保留 /api/* 作為相容備援
+	serviceGroupUse := r.Group("/use")
+	serviceGroupUse.Any("/*path", middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
+
+	// 保留舊的 /api/* 路徑以便相容舊有的客戶端
+	// 但統一回傳 301 Moved Permanently，導向新的 /use/* 路徑
+	serviceGroupOld := r.Group("/api")
+	serviceGroupOld.Any("/*path", func(c *gin.Context) {
+		// 保留原本的 path 與 query string
+		target := "/use" + c.Param("path")
+		if c.Request.URL.RawQuery != "" {
+			target += "?" + c.Request.URL.RawQuery
+		}
+		c.Redirect(http.StatusMovedPermanently, target)
+	})
 
 	return r
 }

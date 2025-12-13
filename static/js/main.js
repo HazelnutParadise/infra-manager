@@ -718,22 +718,51 @@ function renderTokenTable(tokens) {
     });
 }
 
-// 複製請求網址，例如: https://host/api/<service>/<token>/
+// 複製請求網址，例如: https://host/use/<service>/<token>/ (仍相容 /api/)
 function copyRequestUrl(serviceName, tokenValue) {
-    if (!tokenValue) return alert('Token 值不存在，無法複製請求網址');
-    if (!serviceName) {
-        // 若 service 未設定，提供一般範例 URL
-        const url = `${window.location.origin}/api/${tokenValue}/`;
-        navigator.clipboard?.writeText(url).then(() => alert('已複製請求網址: ' + url)).catch(() => alert('複製失敗'));
+    if (!tokenValue) {
+        console.error('Token 值不存在，無法複製請求網址');
         return;
     }
 
-    const url = `${window.location.origin}/api/${encodeURIComponent(serviceName)}/${encodeURIComponent(tokenValue)}/`;
+    const url = serviceName
+        ? `${window.location.origin}/use/${encodeURIComponent(serviceName)}/${encodeURIComponent(tokenValue)}/`
+        : `${window.location.origin}/use/${tokenValue}/`;
+
     navigator.clipboard?.writeText(url).then(() => {
-        alert('已複製請求網址: ' + url);
+        // 找到對應按鈕並變色提示（不使用 alert）
+        const selector = `button[onclick="copyRequestUrl('${serviceName}', '${tokenValue}')"]`;
+        const buttons = document.querySelectorAll(selector);
+        if (buttons.length > 0) {
+            const button = buttons[0];
+            const originalText = button.textContent;
+            button.textContent = 'copied!';
+            button.classList.remove('btn-secondary');
+            button.classList.add('btn-success');
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('btn-success');
+                button.classList.add('btn-secondary');
+            }, 2000);
+        }
+        console.log('已複製請求網址: ' + url);
     }).catch(err => {
         console.error('複製請求網址失敗', err);
-        alert('複製失敗');
+        // 如果有按鈕，顯示失敗樣式短暫提示
+        const selector = `button[onclick="copyRequestUrl('${serviceName}', '${tokenValue}')"]`;
+        const buttons = document.querySelectorAll(selector);
+        if (buttons.length > 0) {
+            const button = buttons[0];
+            const originalText = button.textContent;
+            button.textContent = 'failed';
+            button.classList.remove('btn-secondary');
+            button.classList.add('btn-danger');
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('btn-danger');
+                button.classList.add('btn-secondary');
+            }, 2000);
+        }
     });
 }
 
