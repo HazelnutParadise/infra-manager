@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"regexp"
+	"strings"
 
 	"infra-manager/models"
 
@@ -74,8 +76,49 @@ func ProxyRequest(c *gin.Context) {
 		return
 	}
 
-	// 設置響應標頭
+	// 將響應標頭複製至回應，但會針對 Location 與 Set-Cookie 做必要的調整
 	for key, values := range proxyResp.Header {
+		// 處理 Location 重導
+		if strings.EqualFold(key, "Location") {
+			for _, value := range values {
+				// 若 Location 指向原始後端主機，改寫為對應的代理路徑
+				// 例如: http://ai:8080/foo -> /use/<service.Name>/foo
+				loc := value
+				// 解析後端主機
+				backendHost := targetURL.Host
+				if strings.Contains(loc, backendHost) {
+					// 移除協議與 host，留下一個以 / 開頭的路徑
+					// 如果 loc 包含查詢字串則保留
+					// 找到 loc 開始於 backendHost 的地方
+					// 考慮到 loc 可以是 http://backend/..., https://backend/...
+					// 先移除前綴
+					loc = strings.ReplaceAll(loc, "http://"+backendHost, "")
+					loc = strings.ReplaceAll(loc, "https://"+backendHost, "")
+					loc = strings.ReplaceAll(loc, "//"+backendHost, "")
+					// 組成代理路徑
+					proxyPrefix := path.Join("/use", service.Name)
+					if !strings.HasPrefix(loc, "/") {
+						loc = "/" + loc
+					}
+					rewritten := proxyPrefix + loc
+					c.Header(key, rewritten)
+				} else {
+					c.Header(key, value)
+				}
+			}
+			continue
+		}
+
+		// 處理 Set-Cookie，若包含 Domain 指定，則移除 Domain，改為代理用戶端網域
+		if strings.EqualFold(key, "Set-Cookie") {
+			for _, value := range values {
+				// 移除 Domain=...; 以避免無法在代理網域寫入 cookie
+				cookieValue := regexp.MustCompile(`(?i)Domain=[^;]+;?\s?`).ReplaceAllString(value, "")
+				c.Header(key, cookieValue)
+			}
+			continue
+		}
+
 		for _, value := range values {
 			c.Header(key, value)
 		}
@@ -86,7 +129,46 @@ func ProxyRequest(c *gin.Context) {
 	c.Header("Pragma", "no-cache")
 	c.Header("Expires", "0")
 
+	// 如果是 HTML 或 CSS/JavaScript，嘗試替換內部主機 (例如 ai:8080) 為代理路徑 (/use/<service.Name>)
+	contentType := proxyResp.Header.Get("Content-Type")
+	bodyToSend := respBody
+	if contentType != "" && (strings.Contains(contentType, "text/html") || strings.Contains(contentType, "text/css") || strings.Contains(contentType, "javascript")) {
+		bodyStr := string(respBody)
+
+		// 構建代理前綴，例如 /use/localai
+		proxyPrefix := path.Join("/use", service.Name)
+
+		// 準備要替換的目標主機 (host:port)
+		backendHost := targetURL.Host
+
+		// 將各種 URL 形式重寫:
+		// https://backendHost/xxx -> /use/<service.Name>/xxx
+		// http://backendHost/xxx -> /use/<service.Name>/xxx
+		// //backendHost/xxx -> /use/<service.Name>/xxx
+		bodyStr = strings.ReplaceAll(bodyStr, "https://"+backendHost, proxyPrefix)
+		bodyStr = strings.ReplaceAll(bodyStr, "http://"+backendHost, proxyPrefix)
+		bodyStr = strings.ReplaceAll(bodyStr, "//"+backendHost, proxyPrefix)
+
+		// 針對 href/src/action 等屬性（包含引號）的替換，避免誤改一般文字
+		// 使用正則式來尋找 (href|src|action)="(optional scheme)backendHost/path"
+		attrRe := regexp.MustCompile(`(href|src|action)=(['"])(https?:\/\/|\\\/\\\/)?` + regexp.QuoteMeta(backendHost) + `(\/[^'\"]*)?\2`)
+		bodyStr = attrRe.ReplaceAllString(bodyStr, `$1=$2`+proxyPrefix+`$4$2`)
+
+		// base href 的處理: <base href="http://backendHost/"> -> <base href="/use/<serviceName>/">
+		baseRe := regexp.MustCompile(`(?i)<base[^>]*href=(['"])(https?:\/\/)?` + regexp.QuoteMeta(backendHost) + `(\/[^'\"]*)?\1[^>]*>`)
+		bodyStr = baseRe.ReplaceAllString(bodyStr, `<base href="`+proxyPrefix+`$3">`)
+
+		// 若為 CSS 或 JS，簡單替換出現的 backendHost
+		if !strings.Contains(contentType, "text/html") {
+			bodyStr = strings.ReplaceAll(bodyStr, backendHost, proxyPrefix)
+		}
+
+		bodyToSend = []byte(bodyStr)
+		// 移除 Content-Length 以讓 gin 自動計算
+		c.Writer.Header().Del("Content-Length")
+	}
+
 	// 設置狀態碼並發送響應
 	c.Status(proxyResp.StatusCode)
-	c.Writer.Write(respBody)
+	c.Writer.Write(bodyToSend)
 }
