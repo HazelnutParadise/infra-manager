@@ -590,11 +590,12 @@ function switchChartType(chartId, type) {
 }
 
 // 獲取Token列表（可選 userId, serviceId 作為過濾）
-function fetchTokens(userId = '', serviceId = '') {
+function fetchTokens(userId = '', serviceId = '', status = '') {
     let url = `${API_BASE_URL}/tokens`;
     const params = [];
     if (userId) params.push(`user_id=${encodeURIComponent(userId)}`);
     if (serviceId) params.push(`service_id=${encodeURIComponent(serviceId)}`);
+    if (status) params.push(`status=${encodeURIComponent(status)}`);
     if (params.length) url += `?${params.join('&')}`;
 
     fetchWithAuth(url)
@@ -612,7 +613,8 @@ function fetchTokens(userId = '', serviceId = '') {
 function applyTokenFilters() {
     const userId = document.getElementById('filterTokenUser')?.value || '';
     const serviceId = document.getElementById('filterTokenService')?.value || '';
-    fetchTokens(userId, serviceId);
+    const status = document.getElementById('filterTokenStatus')?.value || '';
+    fetchTokens(userId, serviceId, status);
 }
 
 // 清除 Token 篩選器
@@ -673,7 +675,22 @@ function renderTokenTable(tokens) {
         const displayToken = token.token_value || '-';
         const serviceName = token.service ? token.service.name : '';
 
-        const statusHtml = isExpired ? `<span class="text-danger">已過期</span>` : (token.is_active ? '<span class="text-success">啟用</span>' : '<span class="text-danger">停用</span>');
+        // 狀態邏輯：過期 > 失效(Disabled) > 停用/啟用
+        let statusHtml = '';
+        if (isExpired) {
+            statusHtml = `<span class="text-danger">已過期</span>`;
+        } else if (token.disabled) {
+            statusHtml = `<span class="text-danger">失效</span>`;
+        } else {
+            statusHtml = token.is_active ? '<span class="text-success">啟用</span>' : '<span class="text-danger">停用</span>';
+        }
+
+        // 若 token 被標記為 Disabled，則停用「停用/啟用」按鈕
+        const toggleButtonHtml = token.disabled ?
+            `<button class="btn btn-secondary btn-sm" disabled>已失效</button>` :
+            `<button class="btn ${token.is_active ? 'btn-warning' : 'btn-success'} btn-sm" onclick="toggleTokenStatus(${token.id}, ${!token.is_active})">
+                    ${token.is_active ? '停用' : '啟用'}
+                </button>`;
 
         row.innerHTML = `
             <td>${token.id}</td>
@@ -691,9 +708,7 @@ function renderTokenTable(tokens) {
             <td>${statusHtml}</td>
             <td>
                 <button class="btn btn-primary btn-sm" onclick="editToken(${token.id})">編輯</button>
-                <button class="btn ${token.is_active ? 'btn-warning' : 'btn-success'} btn-sm" onclick="toggleTokenStatus(${token.id}, ${!token.is_active})">
-                    ${token.is_active ? '停用' : '啟用'}
-                </button>
+                ${toggleButtonHtml}
                 <button class="btn btn-danger btn-sm" onclick="deleteToken(${token.id})">刪除</button>
             </td>
         `;

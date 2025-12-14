@@ -26,9 +26,10 @@ func generateToken() string {
 func GetAllTokens(c *gin.Context) {
 	var tokens []models.Token
 
-	// 支援透過 query 參數過濾: ?user_id=...&service_id=...
+	// 支援透過 query 參數過濾: ?user_id=...&service_id=...&status=...
 	userIDStr := c.Query("user_id")
 	serviceIDStr := c.Query("service_id")
+	status := c.Query("status")
 
 	query := db.DB.Preload("User").Preload("Service")
 
@@ -38,9 +39,28 @@ func GetAllTokens(c *gin.Context) {
 		}
 	}
 
+	// 處理 service_id 的特殊值 "unknown"（無對應的 service）
 	if serviceIDStr != "" {
-		if serviceID, err := strconv.Atoi(serviceIDStr); err == nil {
+		if serviceIDStr == "unknown" {
+			// left join services 並篩選沒有對應服務的 token
+			query = query.Joins("LEFT JOIN services ON services.id = tokens.service_id").Where("services.id IS NULL")
+		} else if serviceID, err := strconv.Atoi(serviceIDStr); err == nil {
 			query = query.Where("service_id = ?", serviceID)
+		}
+	}
+
+	// 處理 status 篩選
+	if status != "" {
+		now := time.Now()
+		switch status {
+		case "active":
+			query = query.Where("is_active = ? AND disabled = ? AND expires_at >= ?", true, false, now)
+		case "inactive":
+			query = query.Where("is_active = ? AND disabled = ?", false, false)
+		case "expired":
+			query = query.Where("expires_at < ?", now)
+		case "disabled":
+			query = query.Where("disabled = ?", true)
 		}
 	}
 
@@ -242,6 +262,12 @@ func ToggleTokenStatus(c *gin.Context) {
 	var token models.Token
 	if err := db.DB.First(&token, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "找不到Token"})
+		return
+	}
+
+	// 若 Token 已被標記為 Disabled，則不可再次啟用
+	if token.Disabled && isActive {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "此Token已被標記為失效，無法啟用"})
 		return
 	}
 

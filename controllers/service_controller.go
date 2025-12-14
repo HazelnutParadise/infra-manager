@@ -96,11 +96,11 @@ func DeleteService(c *gin.Context) {
 		return
 	}
 
-	// 檢查是否有相關的Token
-	var tokenCount int64
-	db.DB.Model(&models.Token{}).Where("service_id = ?", service.ID).Count(&tokenCount)
-	if tokenCount > 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "無法刪除服務，請先刪除相關的Token"})
+	// 將此服務相關的 Token 標記為失效（disabled）並停用
+	if err := db.DB.Model(&models.Token{}).
+		Where("service_id = ?", service.ID).
+		Updates(map[string]interface{}{"is_active": false, "disabled": true}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "無法更新相關Token狀態"})
 		return
 	}
 
@@ -109,7 +109,7 @@ func DeleteService(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "服務已刪除"})
+	c.JSON(http.StatusOK, gin.H{"message": "服務已刪除，該服務相關Token已標記為失效"})
 }
 
 // 禁用或啟用服務

@@ -35,6 +35,13 @@
                     <select id="filterTokenService" onchange="applyTokenFilters()">
                         <option value="">-- 篩選：全部服務 --</option>
                     </select>
+                    <select id="filterTokenStatus" onchange="applyTokenFilters()">
+                        <option value="">-- 篩選：全部狀態 --</option>
+                        <option value="active">啟用</option>
+                        <option value="inactive">停用</option>
+                        <option value="expired">已過期</option>
+                        <option value="disabled">失效</option>
+                    </select>
                     <button class="btn btn-sm" onclick="clearTokenFilters()">清除篩選</button>
                 </div>
                 <table class="table">

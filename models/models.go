@@ -40,6 +40,7 @@ type Token struct {
 	Description string      `json:"description"` // 新增備註說明欄位
 	ExpiresAt   time.Time   `json:"expires_at"`
 	IsActive    bool        `gorm:"default:true" json:"is_active"`
+	Disabled    bool        `gorm:"default:false" json:"disabled"` // 失效紀錄欄位
 	AccessLogs  []AccessLog `gorm:"foreignKey:TokenID" json:"access_logs,omitempty"`
 }
 
