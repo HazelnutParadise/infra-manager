@@ -981,6 +981,9 @@ function renderServicesUsageChart(stats) {
     // 計算總數(用於計算百分比)
     const total = data.reduce((acc, val) => acc + val, 0);
 
+    // 只有在 datalabels 插件正確載入且 id 為 'datalabels' 時才啟用
+    const includeDatalabels = (chartType === 'pie' || chartType === 'doughnut') && (window.ChartDataLabels && window.ChartDataLabels.id === 'datalabels');
+
     // 創建新圖表
     window.charts.serviceUsage = new Chart(serviceUsageCanvas, {
         type: chartType,
@@ -1016,8 +1019,8 @@ function renderServicesUsageChart(stats) {
                         }
                     }
                 },
-                // 如果是圓餅圖，直接在圖上顯示百分比
-                datalabels: chartType === 'pie' || chartType === 'doughnut' ? {
+                // 如果是圓餅圖，直接在圖上顯示百分比（僅當插件存在時）
+                datalabels: includeDatalabels ? {
                     formatter: (value, ctx) => {
                         const percentage = ((value / total) * 100).toFixed(1);
                         return `${percentage}%`;
@@ -1026,7 +1029,7 @@ function renderServicesUsageChart(stats) {
                     font: {
                         weight: 'bold'
                     }
-                } : false
+                } : undefined
             }
         }
     });
@@ -1231,6 +1234,9 @@ function updateUserServiceChart() {
             // 計算總數(用於計算百分比)
             const total = counts.reduce((acc, val) => acc + val, 0);
 
+            // 只有在 datalabels 插件正確載入且 id 為 'datalabels' 時才啟用
+            const includeDatalabels = (chartType === 'pie' || chartType === 'doughnut') && (window.ChartDataLabels && window.ChartDataLabels.id === 'datalabels');
+
             window.charts.userService = new Chart(userServiceCanvas, {
                 type: chartType,
                 data: {
@@ -1261,8 +1267,8 @@ function updateUserServiceChart() {
                                 }
                             }
                         },
-                        // 如果是圓餅圖，直接在圖上顯示百分比
-                        datalabels: chartType === 'pie' || chartType === 'doughnut' ? {
+                        // 如果是圓餅圖，直接在圖上顯示百分比（僅當插件存在時）
+                        datalabels: includeDatalabels ? {
                             formatter: (value, ctx) => {
                                 const percentage = ((value / total) * 100).toFixed(1);
                                 return `${percentage}%`;
@@ -1271,7 +1277,7 @@ function updateUserServiceChart() {
                             font: {
                                 weight: 'bold'
                             }
-                        } : false
+                        } : undefined
                     }
                 }
             });
@@ -1435,6 +1441,9 @@ function updateUserTokenChart() {
             // 計算總數(用於計算百分比)
             const total = counts.reduce((acc, val) => acc + val, 0);
 
+            // 只有在 datalabels 插件正確載入且 id 為 'datalabels' 時才啟用
+            const includeDatalabels = (chartType === 'pie' || chartType === 'doughnut') && (window.ChartDataLabels && window.ChartDataLabels.id === 'datalabels');
+
             window.charts.userToken = new Chart(userTokenCanvas, {
                 type: chartType,
                 data: {
@@ -1469,8 +1478,8 @@ function updateUserTokenChart() {
                                 }
                             }
                         },
-                        // 如果是圓餅圖，直接在圖上顯示百分比
-                        datalabels: chartType === 'pie' || chartType === 'doughnut' ? {
+                        // 如果是圓餅圖，直接在圖上顯示百分比（僅當插件存在時）
+                        datalabels: includeDatalabels ? {
                             formatter: (value, ctx) => {
                                 const percentage = ((value / total) * 100).toFixed(1);
                                 return `${percentage}%`;
@@ -1479,7 +1488,7 @@ function updateUserTokenChart() {
                             font: {
                                 weight: 'bold'
                             }
-                        } : false
+                        } : undefined
                     }
                 }
             });
