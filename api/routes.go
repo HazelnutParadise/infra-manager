@@ -144,7 +144,6 @@ func SetupRouter() *gin.Engine {
 	serviceGroupUse.Any("/*path", middlewares.NoIndex(), middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
 
 	// 保留舊的 /api/* 路徑以便相容舊有的客戶端
-	// 但統一回傳 301 Moved Permanently，導向新的 /use/* 路徑
 	serviceGroupOld := r.Group("/api")
 	serviceGroupOld.Any("/*path", middlewares.NoIndex(), middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
 
