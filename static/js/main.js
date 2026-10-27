@@ -643,77 +643,32 @@ function beginChartUpdate(name) {
 // 更新每日請求數量趨勢圖
 function updateDailyRequestsChart() {
     const chartRevision = beginChartUpdate('dailyRequests');
-    // 獲取選定的時間範圍
     const days = document.getElementById('dailyRequestsTimeRange').value || 30;
-
-    fetchWithAuth(`${API_BASE_URL}/stats/dashboard-recent?days=${days}`)
+    fetchWithAuth(`${API_BASE_URL}/stats/dashboard-responses?${typeof getDashboardDateQuery === 'function' && getDashboardDateQuery() || `days=${days}`}`)
         .then(data => {
-            const dailyRequestsCanvas = document.getElementById('dailyRequestsChart');
-            if (!dailyRequestsCanvas) return;
-
-            // 若已存在圖表，則先銷毀
-
-            // 確保數據按日期排序
-            data.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-            const dates = data.map(d => d.date);
-            const counts = data.map(d => d.count);
-
-            console.log('每日請求數據:', { dates, counts });
-
-            // 創建新圖表
-            if (window.chartRevisions.dailyRequests !== chartRevision) return;
-                if (window.charts.dailyRequests) window.charts.dailyRequests.destroy();
-                window.charts.dailyRequests = new Chart(dailyRequestsCanvas, {
-                type: 'line',
-                data: {
-                    labels: dates,
-                    datasets: [{
-                        label: '每日請求數',
-                        data: counts,
-                        fill: false,
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.4,
-                        cubicInterpolationMode: 'monotone',
-                        pointRadius: 2,
-                        pointBackgroundColor: 'rgb(75, 192, 192)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                title: function (tooltipItems) {
-                                    return tooltipItems[0].label;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: '日期'
-                            },
-                            ticks: {
-                                maxRotation: 45,
-                                minRotation: 45
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: '請求數量'
-                            }
-                        }
-                    }
+            const canvas = document.getElementById('dailyRequestsChart');
+            if (!canvas || window.chartRevisions.dailyRequests !== chartRevision) return;
+            const notice = document.getElementById('dailyRequestsError');
+            if (notice) notice.textContent = '';
+            if (window.charts.dailyRequests) window.charts.dailyRequests.destroy();
+            window.charts.dailyRequests = new Chart(canvas, {
+                type: 'bar',
+                data: {labels: data.map(day => day.date), datasets: [
+                    {label: '錯誤回應（≥ 400）', data: data.map(day => day.error), backgroundColor: '#fa8b80', borderRadius: 2, maxBarThickness: 24},
+                    {label: '正常回應（100–399）', data: data.map(day => day.success), backgroundColor: '#439b70', borderRadius: 2, maxBarThickness: 24}
+                ]},
+                options: {responsive: true, maintainAspectRatio: false,
+                    plugins: {legend: {position: 'top', align: 'end', reverse: true, labels: {boxWidth: 10, usePointStyle: true}}},
+                    scales: {x: {stacked: true, ticks: {maxRotation: 0, autoSkip: true, maxTicksLimit: window.innerWidth && window.innerWidth < 600 ? 5 : 8, callback: function(value) { const date = this.getLabelForValue(value); return `${Number(date.slice(5,7))}/${Number(date.slice(8,10))}`; }}}, y: {stacked: true, beginAtZero: true, ticks: {precision: 0}}}
                 }
             });
         })
-        .catch(error => console.error('獲取每日請求數據失敗:', error));
+        .catch(error => {
+            if (window.chartRevisions.dailyRequests !== chartRevision) return;
+            const notice = document.getElementById('dailyRequestsError');
+            if (notice) notice.textContent = '無法載入回應統計，請重新整理。';
+            console.error('獲取每日回應統計失敗:', error);
+        });
 }
 
 // 渲染用戶表格
@@ -868,7 +823,7 @@ function updateUserServiceChart() {
         // 顯示全部使用者的服務使用量
         if (chartType === 'line') {
             // 以每個服務為一條線，時間為 X 軸
-            const days = document.getElementById('dailyRequestsTimeRange')?.value || 30;
+            const days = Number(document.getElementById('dailyRequestsTimeRange')?.value) || 30;
             fetchServicesData().then(services => {
                 const activeServices = services.filter(s => s.is_active);
                 const promises = activeServices.map(s => fetchServiceTimeStats(s.id, days).then(data => ({ service: s, data })));
@@ -956,7 +911,7 @@ function updateUserServiceChart() {
     // 若指定單一使用者，原有邏輯
     if (chartType === 'line') {
         // 折線圖：以時間為橫軸，風格與每日請求數量趨勢圖一致
-        const days = document.getElementById('dailyRequestsTimeRange')?.value || 30;
+        const days = Number(document.getElementById('dailyRequestsTimeRange')?.value) || 30;
 
         fetchWithAuth(`${API_BASE_URL}/stats/users/${userId}/services/time`)
             .then(data => {
@@ -1123,7 +1078,7 @@ function updateUserTokenChart() {
 
     if (chartType === 'line') {
         // 折線圖：以時間為橫軸，每個token一條線
-        const days = document.getElementById('dailyRequestsTimeRange')?.value || 30;
+        const days = Number(document.getElementById('dailyRequestsTimeRange')?.value) || 30;
 
         if (userId === 'all') {
             // 對於全部使用者，針對每個 active token 取得時間序列

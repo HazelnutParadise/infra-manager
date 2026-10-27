@@ -125,7 +125,9 @@ func SetupRouter() *gin.Engine {
 			// 基本統計數據
 			statsRoutes.GET("/recent", controllers.GetRecentStats)
 			statsRoutes.GET("/dashboard-recent", controllers.GetDashboardRecentStats)
+			statsRoutes.GET("/dashboard-responses", controllers.GetDashboardResponseChart)
 			statsRoutes.GET("/dashboard-services", controllers.GetDashboardServiceUsage)
+			statsRoutes.GET("/dashboard-service-details", controllers.GetDashboardServiceDetail)
 			statsRoutes.GET("/services", controllers.GetServicesUsageStats)
 
 			// 服務相關統計

@@ -12,36 +12,26 @@
 <link rel="stylesheet" href="/static/css/admin.css">
 </head>
 
-<body class="admin-app">
+<body class="admin-app dashboard-page">
     <nav class="navbar">
-        <a href="/dashboard" class="navbar-brand">基礎設施管理系統</a>
+        <a href="/dashboard" class="navbar-brand"><i class="fas fa-layer-group" aria-hidden="true"></i><span>基礎設施存取管理<small>Infrastructure Access Manager</small></span></a>
         <ul class="navbar-nav">
-            <li class="nav-item"><a href="/dashboard" class="nav-link">儀表板</a></li>
-            <li class="nav-item"><a href="/failures" class="nav-link">失敗紀錄</a></li>
-            <li class="nav-item"><a href="/users" class="nav-link">使用者</a></li>
-            <li class="nav-item"><a href="/services" class="nav-link">服務</a></li>
-            <li class="nav-item"><a href="/tokens" class="nav-link">Token</a></li>
-            <li class="nav-item"><a href="/change-password" class="nav-link">修改密碼</a></li>
-            <li class="nav-item"><a href="javascript:logout()" class="nav-link">登出</a></li>
+            <li class="nav-item"><a href="/dashboard" class="nav-link"><i class="fas fa-house" aria-hidden="true"></i>儀表板</a></li>
+            <li class="nav-item"><a href="/failures" class="nav-link"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i>失敗紀錄</a></li>
+            <li class="nav-item"><a href="/users" class="nav-link"><i class="fas fa-users" aria-hidden="true"></i>使用者</a></li>
+            <li class="nav-item"><a href="/services" class="nav-link"><i class="fas fa-server" aria-hidden="true"></i>服務</a></li>
+            <li class="nav-item"><a href="/tokens" class="nav-link"><i class="fas fa-key" aria-hidden="true"></i>Token</a></li>
+            <li class="nav-item"><a href="/change-password" class="nav-link"><i class="fas fa-gear" aria-hidden="true"></i>修改密碼</a></li>
+            <li class="nav-item"><a href="javascript:logout()" class="nav-link"><i class="fas fa-arrow-right-from-bracket" aria-hidden="true"></i>登出</a></li>
         </ul>
     </nav>
 
+    <div class="dashboard-topbar"><div class="dashboard-search"><label class="sr-only" for="dashboardSearch">搜尋使用者、服務或 Token 備註</label><i class="fas fa-search" aria-hidden="true"></i><input id="dashboardSearch" type="search" placeholder="搜尋使用者、服務或 Token 備註" autocomplete="off"><div id="dashboardSearchResults" class="dashboard-search-results" hidden></div></div><button class="btn dashboard-refresh" id="refreshOverview"><i class="fas fa-rotate" aria-hidden="true"></i> 重新整理</button><a class="dashboard-alerts" href="/failures" aria-label="查看失敗紀錄" title="查看失敗紀錄"><i class="far fa-bell" aria-hidden="true"></i></a><details class="dashboard-account"><summary aria-label="管理員選單"><span class="dashboard-account-icon"><i class="fas fa-user" aria-hidden="true"></i></span><span class="dashboard-account-label">管理員</span><i class="fas fa-chevron-down" aria-hidden="true"></i></summary><div><a href="/change-password">修改密碼</a><a href="/logout">登出</a></div></details></div>
     <div class="container">
-        <header class="overview-heading"><div><h1>儀表板</h1><p>查看已通過驗證的請求與需要處理的項目。使用量資料最多保留 90 天或 100 萬筆。</p></div><button class="btn btn-primary" id="refreshOverview">重新整理</button></header>
+        <header class="overview-heading"><div><h1>儀表板</h1><p>查看已通過驗證的請求與需要處理的項目。使用量資料最多保留 90 天或 100 萬筆。</p></div><form id="dashboardDateForm" class="dashboard-date"><label>起始日期 <input id="dashboardStartDate" type="date" required></label><label>結束日期 <input id="dashboardEndDate" type="date" required></label><button class="btn" type="submit">套用</button><span id="dashboardDateError" role="alert"></span></form></header>
         <!-- 統計卡片區塊 -->
         <div class="stats-overview">
-            <h2><i class="fas fa-chart-line"></i> 關鍵指標</h2>
             <div class="dashboard-grid">
-                <div class="stat-card compact">
-                    <div class="stat-icon">
-                        <i class="fas fa-exchange-alt"></i>
-                    </div>
-                    <div class="stat-card-body">
-                        <div class="stat-title">近 30 天請求</div>
-                        <div class="stat-value" id="totalRequests">0</div>
-                        <div class="stat-trend" id="totalRequestsTrend"></div>
-                    </div>
-                </div>
                 <div class="stat-card compact">
                     <div class="stat-icon">
                         <i class="fas fa-user-check"></i>
@@ -72,33 +62,40 @@
                         <div class="stat-trend" id="activeTokensTrend"></div>
                     </div>
                 </div>
+                <div class="stat-card compact">
+                    <div class="stat-icon"><i class="far fa-clock"></i></div>
+                    <div class="stat-card-body"><div class="stat-title">即將到期 Token</div><div class="stat-value" id="expiringTokenCount">—</div><div class="stat-trend">7 天內到期</div></div>
+                </div>
             </div>
         </div>
 
         <div class="overview-focus">
             <div class="chart-card primary">
                 <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-chart-area"></i> 每日請求數量趨勢（台北時間）</h2>
+                    <h2 class="card-title"><i class="fas fa-chart-area"></i> 存取請求趨勢（台北時間）</h2>
                     <div class="time-selector">
                         <select id="dailyRequestsTimeRange">
                             <option value="7">過去 7 天</option>
                             <option value="30" selected>過去 30 天</option>
                             <option value="90">過去 90 天</option>
+                            <option value="custom" hidden>自訂日期</option>
                         </select>
                     </div>
                 </div>
                 <div class="card-body">
+                    <p class="overview-caption">已驗證請求依 HTTP 狀態統計，驗證失敗及傳輸中斷請查看失敗紀錄。</p>
                     <div class="chart-container">
                         <canvas id="dailyRequestsChart"></canvas>
                     </div>
+                    <p id="dailyRequestsError" role="status"></p>
                 </div>
             </div>
 
-            <section class="overview-panel"><div class="overview-panel-heading"><h2>即將到期的 Token</h2><a href="/tokens">管理 Token →</a></div><p class="overview-caption">未來 30 天內到期且目前啟用</p><div id="expiringTokens" class="overview-list" aria-live="polite">載入中…</div></section>
+            <section class="overview-panel"><div class="overview-panel-heading"><h2>即將到期的 Token</h2><a href="/tokens">管理 Token →</a></div><p class="overview-caption">未來 30 天內到期且目前啟用</p><div class="overview-table-scroll"><table class="overview-table"><thead><tr><th>使用者</th><th>服務</th><th>備註</th><th>到期時間</th><th>剩餘</th><th>操作</th></tr></thead><tbody id="expiringTokens" aria-live="polite"><tr><td colspan="6">載入中…</td></tr></tbody></table></div></section>
         </div>
-        <div class="overview-worklist"><section class="overview-panel"><div class="overview-panel-heading"><h2>近期失敗</h2><a href="/failures">查看全部 →</a></div><p class="overview-caption">顯示最新 5 筆失敗</p><div id="recentFailures" class="overview-list" aria-live="polite">載入中…</div></section><section class="overview-panel"><div class="overview-panel-heading"><h2>服務使用情況</h2><a href="/services">管理服務 →</a></div><p class="overview-caption">近 30 天通過驗證的請求；錯誤為 4xx 或 5xx 回應</p><div class="overview-table-scroll"><table class="overview-table"><thead><tr><th>服務</th><th>請求</th><th>錯誤</th><th>最後使用</th></tr></thead><tbody id="serviceOverview"><tr><td colspan="4">載入中…</td></tr></tbody></table></div></section></div>
+        <div class="overview-worklist"><section class="overview-panel"><div class="overview-panel-heading"><h2>服務使用情況</h2><a href="/services">管理服務 →</a></div><p class="overview-caption">所選期間通過驗證的請求；人數與 Token 數為期間內有使用的數量</p><div class="overview-table-scroll"><table class="overview-table"><thead><tr><th>服務</th><th>請求</th><th>正常回應率</th><th>使用者數</th><th>Token 數</th><th>最後使用</th><th>操作</th></tr></thead><tbody id="serviceOverview"><tr><td colspan="7">載入中…</td></tr></tbody></table></div></section><section class="overview-panel"><div class="overview-panel-heading"><h2>近期失敗</h2><a href="/failures">查看全部 →</a></div><p class="overview-caption">顯示最新 5 筆失敗</p><div id="recentFailures" class="overview-list" aria-live="polite">載入中…</div></section></div>
         <div class="charts-section">
-            <p class="overview-caption">以下服務、使用者與 Token 的每日趨勢以 UTC 日期計算。</p>
+            <p class="overview-caption">以下服務、使用者與 Token 的每日趨勢以 UTC 日期計算；上方自訂日期不影響這些圖表。</p>
             <!-- 時間趨勢（並排顯示：服務、Token） -->
             <div class="trends-section">
                 <div class="trend-card">
@@ -223,7 +220,9 @@
 
     <script src="/static/js/main.js"></script>
 <script src="/static/js/admin.js"></script>
+<script src="/static/js/dashboard-date.js"></script>
 <script src="/static/js/overview.js"></script>
+<script src="/static/js/dashboard-search.js"></script>
 </body>
 
 </html>
