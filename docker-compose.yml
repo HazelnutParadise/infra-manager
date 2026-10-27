@@ -9,7 +9,11 @@ services:
     environment:
       - GIN_MODE=release
     volumes:
-      - /mnt/hdd0/infra-manager/data:/app/data
+      - type: bind
+        source: ${DATA_DIR:?請設定 DATA_DIR}
+        target: /app/data
+        bind:
+          create_host_path: true
     restart: always
     networks:
       - infra-net

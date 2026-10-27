@@ -23,6 +23,15 @@
 - 資料庫：SQLite3
 - 部署：Docker + Docker Compose
 
+## 使用 Docker Compose 啟動
+
+1. 複製範例設定：`cp .env.example .env`。
+2. 修改 `.env` 的 `DATA_DIR`，指定 Docker 主機上的資料目錄。既有部署請使用原本的 `/mnt/hdd0/infra-manager/data`，並確認其中有原本的 `infra_manager.db`。
+3. 確認外部 Docker 網路 `infra-net` 已存在。
+4. 執行 `docker compose config --quiet` 檢查設定，再執行 `docker compose up -d --build` 啟動。
+
+`DATA_DIR` 未設定或為空時，Compose 不會正常啟動。指定的目錄不存在時 Docker 會自動建立；路徑錯誤可能導致程式建立新的空資料庫，請在啟動前確認路徑。`.env` 不納入版本控制。
+
 ## 對應關係
 
 - 一個人員可以有多個token
