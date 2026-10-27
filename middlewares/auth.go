@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"encoding/hex"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -11,6 +13,8 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // AdminAuth 是管理介面的認證中間件 (基於 session)
@@ -76,14 +80,18 @@ func TokenAuth() gin.HandlerFunc {
 		path = strings.TrimPrefix(path, "/")
 
 		parts := strings.SplitN(path, "/", 3)
-
-		if len(parts) < 2 {
+		serviceName := parts[0]
+		bearer := ""
+		if strings.HasPrefix(c.FullPath(), "/use/") {
+			header := strings.Fields(c.GetHeader("Authorization"))
+			if len(header) == 2 && strings.EqualFold(header[0], "Bearer") {
+				bearer = header[1]
+			}
+		}
+		if len(parts) < 2 && bearer == "" {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "無效的API路徑"})
 			return
 		}
-
-		serviceName := parts[0]
-		tokenValue := parts[1]
 
 		// 查詢服務
 		var service models.Service
@@ -92,9 +100,40 @@ func TokenAuth() gin.HandlerFunc {
 			return
 		}
 
+		tokenValue := bearer
+		targetEndpoint := ""
+		if len(parts) > 1 {
+			urlToken := bearer == ""
+			forceBearer := bearer != "" && strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Infra-Token-Source")), "bearer")
+			if !urlToken && !forceBearer {
+				// Generated tokens are 32 lowercase hex characters. Existing custom
+				// tokens (including revoked ones) also retain URL precedence.
+				_, hexErr := hex.DecodeString(parts[1])
+				urlToken = len(parts[1]) == 32 && hexErr == nil && parts[1] == strings.ToLower(parts[1])
+				if !urlToken && parts[1] != "" {
+					var existing models.Token
+					err := db.DB.Session(&gorm.Session{Logger: logger.Discard}).Unscoped().Where("token_value = ?", parts[1]).First(&existing).Error
+					if err == nil {
+						urlToken = true
+					} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+						c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "無法查詢Token"})
+						return
+					}
+				}
+			}
+			if urlToken {
+				tokenValue = parts[1]
+				if len(parts) > 2 {
+					targetEndpoint = parts[2]
+				}
+			} else {
+				targetEndpoint = strings.TrimPrefix(path, serviceName+"/")
+			}
+		}
+
 		// 查詢Token
 		var token models.Token
-		if err := db.DB.Where("token_value = ? AND service_id = ? AND is_active = ?", tokenValue, service.ID, true).First(&token).Error; err != nil {
+		if err := db.DB.Session(&gorm.Session{Logger: logger.Discard}).Where("token_value = ? AND service_id = ? AND is_active = ?", tokenValue, service.ID, true).First(&token).Error; err != nil {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "無效的Token"})
 			return
 		}
@@ -117,10 +156,7 @@ func TokenAuth() gin.HandlerFunc {
 		c.Set("token", token)
 		c.Set("service", service)
 		c.Set("user", user)
-		c.Set("targetEndpoint", "")
-		if len(parts) > 2 {
-			c.Set("targetEndpoint", parts[2])
-		}
+		c.Set("targetEndpoint", targetEndpoint)
 
 		c.Next()
 	}

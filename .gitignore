@@ -1,4 +1,12 @@
 *.exe
 /src/data
 *.db
+*.db-shm
+*.db-wal
 tempCodeRunnerFile.go
+/data/
+/main
+.env
+.env.*
+!.env.example
+.DS_Store

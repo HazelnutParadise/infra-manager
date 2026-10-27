@@ -7,7 +7,12 @@
 - api經過token驗證後反向代理到目標服務，攜帶所有請求header、body、查詢參數
   - 用戶或token若被停權、token過期或無效或與請求的服務不符則回傳403
   - 找不到服務則回傳404
-- api只有一個endpoint：`/<目標服務名稱>/<存取token>/<目標服務的endpoint>`
+- 代理路徑：
+  - 網址 token：`/use/<服務名稱>/<存取token>/<目標路徑>`，原有 `/api/` 路徑仍可使用。
+  - Bearer token：`/use/<服務名稱>/<目標路徑>`，標頭帶 `Authorization: Bearer <存取token>`。
+  - 辨識為網址 token 時優先驗證網址 token，即使無效、停用或過期也不會改用 Bearer。辨識方式是 32 碼小寫十六進位字串，或資料庫中曾存在的 token；目標路徑第一段若符合這些條件，也會被視為網址 token。
+  - 若目標路徑第一段被誤認為網址 token，另帶 `X-Infra-Token-Source: bearer`，明確指定使用 Bearer。
+  - Authorization 標頭會照原樣轉送到後端服務。
 - 管理介面只有一個admin，人員都是由admin管理，admin密碼由環境變數設定
 
 ## 技術棧

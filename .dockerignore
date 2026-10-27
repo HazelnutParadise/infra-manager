@@ -1,1 +1,12 @@
+.git
+.gitignore
+.gitattributes
+.dockerignore
 data/
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+.DS_Store
+main
