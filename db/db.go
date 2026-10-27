@@ -31,7 +31,19 @@ func InitDB() {
 	}
 
 	// 遷移資料庫結構
-	DB.AutoMigrate(&models.User{}, &models.Service{}, &models.Token{}, &models.AccessLog{}, &models.Admin{})
+	if err := DB.AutoMigrate(&models.User{}, &models.Service{}, &models.Token{}, &models.AccessLog{}, &models.Admin{}, &models.RequestFailure{}); err != nil {
+		log.Fatalf("database migration failed: %v", err)
+	}
+
+	if err := DB.Exec("CREATE INDEX IF NOT EXISTS idx_access_logs_created_at ON access_logs(created_at)").Error; err != nil {
+		log.Fatalf("access log index migration failed: %v", err)
+	}
+
+	for _, statement := range []string{"CREATE INDEX IF NOT EXISTS idx_access_logs_instant ON access_logs(julianday(created_at))", "CREATE INDEX IF NOT EXISTS idx_request_failures_instant ON request_failures(julianday(created_at))"} {
+		if err := DB.Exec(statement).Error; err != nil {
+			log.Fatalf("log timestamp index migration failed: %v", err)
+		}
+	}
 
 	// 檢查並創建默認管理員
 	createDefaultAdmin()

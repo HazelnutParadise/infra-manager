@@ -61,6 +61,9 @@ func SetupRouter() *gin.Engine {
 				"title": "儀表板" + " | " + SERVICE_NAME,
 			})
 		})
+		authorized.GET("/failures", func(c *gin.Context) {
+			c.HTML(200, "failures.html", gin.H{"title": "失敗紀錄 | " + SERVICE_NAME})
+		})
 		authorized.GET("/users", func(c *gin.Context) {
 			c.HTML(200, "users.html", gin.H{
 				"title": "用戶管理" + " | " + SERVICE_NAME,
@@ -110,14 +113,19 @@ func SetupRouter() *gin.Engine {
 		admin.GET("/service-tokens/:service_id", controllers.GetServiceTokens)
 		admin.POST("/tokens", controllers.CreateToken)
 		admin.PUT("/tokens/:id", controllers.UpdateToken)
+		admin.PUT("/tokens/:id/details", controllers.UpdateTokenDetails)
 		admin.DELETE("/tokens/:id", controllers.DeleteToken)
 		admin.PATCH("/tokens/:id/status", controllers.ToggleTokenStatus)
 
 		// 統計數據相關路由
 		statsRoutes := admin.Group("/stats")
 		{
+			statsRoutes.GET("/failures", controllers.GetRequestFailures)
+
 			// 基本統計數據
 			statsRoutes.GET("/recent", controllers.GetRecentStats)
+			statsRoutes.GET("/dashboard-recent", controllers.GetDashboardRecentStats)
+			statsRoutes.GET("/dashboard-services", controllers.GetDashboardServiceUsage)
 			statsRoutes.GET("/services", controllers.GetServicesUsageStats)
 
 			// 服務相關統計
@@ -141,11 +149,11 @@ func SetupRouter() *gin.Engine {
 	// API代理路由 - 使用TokenAuth中間件處理
 	// 主要路由移至 /use/*，但保留 /api/* 作為相容備援
 	serviceGroupUse := r.Group("/use")
-	serviceGroupUse.Any("/*path", middlewares.NoIndex(), middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
+	serviceGroupUse.Any("/*path", middlewares.NoIndex(), middlewares.FailureRecorder(), middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
 
 	// 保留舊的 /api/* 路徑以便相容舊有的客戶端
 	serviceGroupOld := r.Group("/api")
-	serviceGroupOld.Any("/*path", middlewares.NoIndex(), middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
+	serviceGroupOld.Any("/*path", middlewares.NoIndex(), middlewares.FailureRecorder(), middlewares.TokenAuth(), middlewares.Logger(), services.ProxyRequest)
 
 	return r
 }

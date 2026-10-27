@@ -58,6 +58,17 @@ type AccessLog struct {
 	Duration     int64  `json:"duration"` // 毫秒
 }
 
+// RequestFailure records a sanitized failure without credentials or request paths.
+type RequestFailure struct {
+	ID                 uint      `gorm:"primaryKey" json:"id"`
+	CreatedAt          time.Time `gorm:"index" json:"created_at"`
+	Stage              string    `json:"stage"`
+	Reason             string    `json:"reason"`
+	StatusCode         int       `json:"status_code"`
+	UpstreamStatusCode *int      `json:"upstream_status_code"`
+	ServiceID          *uint     `json:"service_id"`
+}
+
 // 管理員模型
 type Admin struct {
 	gorm.Model

@@ -89,6 +89,7 @@ func TokenAuth() gin.HandlerFunc {
 			}
 		}
 		if len(parts) < 2 && bearer == "" {
+			markFailure(c, "authentication", "invalid_path")
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "無效的API路徑"})
 			return
 		}
@@ -96,10 +97,16 @@ func TokenAuth() gin.HandlerFunc {
 		// 查詢服務
 		var service models.Service
 		if err := db.DB.Where("name = ? AND is_active = ?", serviceName, true).First(&service).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				markFailure(c, "authentication", "service_unavailable")
+			} else {
+				markFailure(c, "local", "database_error")
+			}
 			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "找不到服務"})
 			return
 		}
 
+		c.Set("failureServiceID", service.ID)
 		tokenValue := bearer
 		targetEndpoint := ""
 		if len(parts) > 1 {
@@ -116,6 +123,7 @@ func TokenAuth() gin.HandlerFunc {
 					if err == nil {
 						urlToken = true
 					} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+						markFailure(c, "local", "database_error")
 						c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "無法查詢Token"})
 						return
 					}
@@ -134,6 +142,11 @@ func TokenAuth() gin.HandlerFunc {
 		// 查詢Token
 		var token models.Token
 		if err := db.DB.Session(&gorm.Session{Logger: logger.Discard}).Where("token_value = ? AND service_id = ? AND is_active = ?", tokenValue, service.ID, true).First(&token).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				markFailure(c, "authentication", "invalid_token")
+			} else {
+				markFailure(c, "local", "database_error")
+			}
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "無效的Token"})
 			return
 		}
@@ -141,6 +154,7 @@ func TokenAuth() gin.HandlerFunc {
 		// 檢查Token是否過期 - 忽略 1000 年以上的過期時間 (視為永久有效)
 		farFuture := time.Now().AddDate(900, 0, 0) // 900年後
 		if token.ExpiresAt.Before(time.Now()) && token.ExpiresAt.Before(farFuture) {
+			markFailure(c, "authentication", "expired_token")
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Token已過期"})
 			return
 		}
@@ -148,6 +162,11 @@ func TokenAuth() gin.HandlerFunc {
 		// 檢查用戶狀態
 		var user models.User
 		if err := db.DB.Where("id = ? AND is_active = ?", token.UserID, true).First(&user).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				markFailure(c, "authentication", "user_unavailable")
+			} else {
+				markFailure(c, "local", "database_error")
+			}
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "用戶已被停權"})
 			return
 		}
@@ -196,7 +215,7 @@ func Logger() gin.HandlerFunc {
 			Duration:     duration,
 		}
 
-		if err := db.DB.Create(&accessLog).Error; err != nil {
+		if err := saveAccessLog(&accessLog, 1000000); err != nil {
 			// 僅記錄錯誤，不影響請求處理
 			c.Error(err)
 		}

@@ -1,13 +1,18 @@
 package services
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"infra-manager/models"
 
@@ -28,9 +33,14 @@ func ProxyRequest(c *gin.Context) {
 	targetEndpoint, _ := c.Get("targetEndpoint")
 	targetEndpointStr, _ := targetEndpoint.(string)
 
+	record := func(stage, reason string, upstream *int) {
+		id := service.ID
+		c.Set("requestFailure", models.RequestFailure{Stage: stage, Reason: reason, ServiceID: &id, UpstreamStatusCode: upstream})
+	}
 	// 構建目標URL
 	targetURL, err := url.Parse(service.BaseURL)
 	if err != nil {
+		record("local", "invalid_service_url", nil)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "服務URL配置錯誤"})
 		return
 	}
@@ -44,6 +54,7 @@ func ProxyRequest(c *gin.Context) {
 	// 創建新的請求
 	proxyReq, err := http.NewRequest(c.Request.Method, targetURL.String(), nil)
 	if err != nil {
+		record("local", "request_creation_failed", nil)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "無法創建代理請求"})
 		return
 	}
@@ -68,10 +79,15 @@ func ProxyRequest(c *gin.Context) {
 	client := &http.Client{}
 	proxyResp, err := client.Do(proxyReq)
 	if err != nil {
+		record("upstream_connection", classifyConnectionError(err), nil)
 		c.JSON(http.StatusBadGateway, gin.H{"error": "代理請求失敗", "details": err.Error()})
 		return
 	}
 	defer proxyResp.Body.Close()
+	if proxyResp.StatusCode >= 400 {
+		status := proxyResp.StatusCode
+		record("upstream_response", "http_error", &status)
+	}
 
 	// 根據回應特性（如 chunked、Content-Length 未指定、SSE 等），決定是否以串流轉發。
 	// 若為串流（或沒有明確 Content-Length），會使用 io.Copy 逐塊轉發以支援長連線/串流；
@@ -114,6 +130,8 @@ func ProxyRequest(c *gin.Context) {
 		// HEAD 請求不應該寫 body
 		if c.Request.Method != http.MethodHead {
 			if _, copyErr := io.Copy(c.Writer, proxyResp.Body); copyErr != nil {
+				status := proxyResp.StatusCode
+				record("transfer", "response_transfer_failed", &status)
 				c.Error(copyErr)
 			}
 		}
@@ -123,6 +141,8 @@ func ProxyRequest(c *gin.Context) {
 	// 非串流 - 先讀入（以便可能需要修改或計算長度），但不修改內容以避免覆寫
 	respBody, err := io.ReadAll(proxyResp.Body)
 	if err != nil {
+		status := proxyResp.StatusCode
+		record("upstream_response", "response_read_failed", &status)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "讀取代理響應失敗"})
 		return
 	}
@@ -133,6 +153,8 @@ func ProxyRequest(c *gin.Context) {
 	c.Status(proxyResp.StatusCode)
 	if c.Request.Method != http.MethodHead {
 		if _, err := c.Writer.Write(respBody); err != nil {
+			status := proxyResp.StatusCode
+			record("transfer", "client_write_failed", &status)
 			c.Error(err)
 		}
 	}
@@ -165,4 +187,27 @@ func shouldStream(resp *http.Response) bool {
 
 	// 其他情況不串流
 	return false
+}
+
+// classifyConnectionError keeps diagnostics useful without persisting error text or URLs.
+func classifyConnectionError(err error) string {
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return "timeout"
+	}
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return "dns_failed"
+	}
+	if errors.Is(err, syscall.ECONNREFUSED) {
+		return "connection_refused"
+	}
+	var unknown x509.UnknownAuthorityError
+	var invalid x509.CertificateInvalidError
+	var host x509.HostnameError
+	var record tls.RecordHeaderError
+	if errors.As(err, &unknown) || errors.As(err, &invalid) || errors.As(err, &host) || errors.As(err, &record) {
+		return "tls_failed"
+	}
+	return "connection_failed"
 }

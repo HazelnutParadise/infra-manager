@@ -95,17 +95,20 @@ function setupChartEventListeners() {
 
 // 儀表板資料載入主流程
 async function loadDashboardData() {
+    const revision = window.dashboardRevision = (window.dashboardRevision || 0) + 1;
     try {
         console.log('開始載入儀表板數據...');
 
         // 1. 載入基礎統計數據並更新每日請求圖表
         const recentStats = await fetchRecentStats();
+        if (window.dashboardRevision !== revision) return;
         console.log('基礎統計數據載入完成:', recentStats);
         renderRecentStats(recentStats);
         await updateDailyRequestsChart();
 
         // 2. 載入並渲染服務使用量統計
         const servicesStats = await fetchServicesUsageStats();
+        if (window.dashboardRevision !== revision) return;
         console.log('服務使用量數據載入完成:', servicesStats);
         renderServicesUsageChart(servicesStats);
 
@@ -115,6 +118,7 @@ async function loadDashboardData() {
             fetchServicesData(),
             fetchTokensData()
         ]);
+        if (window.dashboardRevision !== revision) return;
 
         console.log('用戶數據載入完成:', users.length);
         console.log('服務數據載入完成:', services.length);
@@ -177,9 +181,9 @@ async function fetchTokensData() {
 // 獲取最近統計數據
 async function fetchRecentStats() {
     try {
-        const days = document.getElementById('dailyRequestsTimeRange')?.value || '30';
+        const days = 30;
         console.log(`獲取最近${days}天的統計數據...`);
-        const response = await fetch(`${API_BASE_URL}/stats/recent?days=${days}`, {
+        const response = await fetch(`${API_BASE_URL}/stats/dashboard-recent?days=${days}`, {
             credentials: 'include'
         });
 
@@ -260,103 +264,49 @@ function filterStatsByDays(stats, days) {
     if (!stats || !stats.length || !days) return stats;
 
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
-    cutoffDate.setHours(0, 0, 0, 0);
+    cutoffDate.setUTCDate(cutoffDate.getUTCDate() - parseInt(days) + 1);
+    cutoffDate.setUTCHours(0, 0, 0, 0);
+    const endDate = new Date();
+    endDate.setUTCHours(0, 0, 0, 0);
+    endDate.setUTCDate(endDate.getUTCDate() + 1);
 
     return stats.filter(item => {
         const itemDate = new Date(item.date);
-        return !isNaN(itemDate) && itemDate >= cutoffDate;
+        return !isNaN(itemDate) && itemDate >= cutoffDate && itemDate < endDate;
     }).sort((a, b) => new Date(a.date) - new Date(b.date));
 }
 
-// 填充用戶選擇器
+// 更新圖表選擇器並保留仍有效的選擇。
+function refreshChartSelector(id, items, label) {
+    const selector = document.getElementById(id);
+    if (!selector) return;
+    const previous = selector.value;
+    const all = Array.from(selector.options).find(option => option.value === 'all');
+    selector.replaceChildren();
+    if (all) selector.appendChild(all);
+    for (const item of items) {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = label(item);
+        selector.appendChild(option);
+    }
+    selector.value = Array.from(selector.options).some(option => option.value === previous) ? previous : 'all';
+}
+
 function fillUserSelectors(users) {
-    if (!users || !users.length) {
-        console.warn('沒有可用的用戶數據來填充選擇器');
-        return;
-    }
-
-    const userServiceSelector = document.getElementById('userServiceSelector');
-    const userTokenSelector = document.getElementById('userTokenSelector');
-
-    const filterTokenUser = document.getElementById('filterTokenUser');
-
-    if (userServiceSelector && userTokenSelector) {
-        // 只使用活躍用戶
-        const activeUsers = users.filter(user => user.is_active);
-
-        // 添加用戶選項（確保不重複）
-        activeUsers.forEach(user => {
-            ensureSelectOption(userServiceSelector, user.id, user.username);
-            ensureSelectOption(userTokenSelector, user.id, user.username);
-            if (filterTokenUser) ensureSelectOption(filterTokenUser, user.id, user.username);
-        });
-
-        // 若未設定預設值，嘗試保留或設定為 'all'
-        try {
-            if (!Array.from(userServiceSelector.options).some(o => o.value === 'all')) userServiceSelector.value = userServiceSelector.options[0]?.value || 'all';
-            if (!Array.from(userTokenSelector.options).some(o => o.value === 'all')) userTokenSelector.value = userTokenSelector.options[0]?.value || 'all';
-        } catch (e) { /* ignore */ }
-
-        console.log(`填充了 ${activeUsers.length} 個用戶到選擇器中（不重複）`);
-    }
+    const active = (users || []).filter(user => user.is_active);
+    refreshChartSelector('userServiceSelector', active, user => user.username);
+    refreshChartSelector('userTokenSelector', active, user => user.username);
 }
 
-// 填充服務選擇器
 function fillServiceSelectors(services) {
-    if (!services || !services.length) {
-        console.warn('沒有可用的服務數據來填充選擇器');
-        return;
-    }
-
-    const serviceTimeSelector = document.getElementById('serviceTimeSelector');
-    const filterTokenService = document.getElementById('filterTokenService');
-
-    if (serviceTimeSelector) {
-        // 只使用活躍服務
-        const activeServices = services.filter(service => service.is_active);
-
-        // 添加服務選項（避免重複）
-        activeServices.forEach(service => {
-            ensureSelectOption(serviceTimeSelector, service.id, service.name);
-            if (filterTokenService) ensureSelectOption(filterTokenService, service.id, service.name);
-        });
-
-        // 若未設定預設值，嘗試保留或設定為 'all'
-        try {
-            if (!Array.from(serviceTimeSelector.options).some(o => o.value === 'all')) serviceTimeSelector.value = serviceTimeSelector.options[0]?.value || 'all';
-        } catch (e) { /* ignore */ }
-
-        console.log(`填充了 ${activeServices.length} 個服務到選擇器中（不重複）`);
-    }
+    const active = (services || []).filter(service => service.is_active);
+    refreshChartSelector('serviceTimeSelector', active, service => service.name);
 }
 
-// 填充 Token 選擇器
 function fillTokenSelectors(tokens) {
-    if (!tokens || !tokens.length) {
-        console.warn('沒有可用的Token數據來填充選擇器');
-        return;
-    }
-
-    const tokenTimeSelector = document.getElementById('tokenTimeSelector');
-
-    if (tokenTimeSelector) {
-        // 只使用活躍 Token
-        const activeTokens = tokens.filter(token => token.is_active);
-
-        // 添加 Token 選項
-        activeTokens.forEach(token => {
-            const option = document.createElement('option');
-            option.value = token.id;
-            option.textContent = `${token.user?.username || '未知用戶'} - ${token.service?.name || '未知服務'} (${token.token_value?.substring(0, 8)}...)`;
-            tokenTimeSelector.appendChild(option);
-        });
-
-        // 預設顯示全部
-        tokenTimeSelector.value = 'all';
-
-        console.log(`填充了 ${activeTokens.length} 個Token到選擇器中`);
-    }
+    const active = (tokens || []).filter(token => token.is_active && !token.disabled);
+    refreshChartSelector('tokenTimeSelector', active, token => `${token.user?.username || '未知用戶'} - ${token.service?.name || '未知服務'} (${token.token_value?.substring(0, 8)}...)`);
 }
 
 // 使用者頁面初始化
@@ -396,7 +346,7 @@ function initTokensPage() {
     // 初始化過期時間為明天
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowString = tomorrow.toISOString().slice(0, 16);
+    const tomorrowString = new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
     const newTokenExpiresField = document.getElementById('newTokenExpires');
     if (newTokenExpiresField) {
@@ -405,85 +355,34 @@ function initTokensPage() {
 }
 
 // API調用相關函數
-function fetchWithAuth(url, options = {}) {
-    // 添加日誌以幫助調試
-    console.log(`發送API請求：${url}`);
+function showApiError(message) {
+    let notice = document.getElementById('apiErrorNotice');
+    if (!notice) { notice = document.createElement('div'); notice.id = 'apiErrorNotice'; notice.setAttribute('role','alert'); document.body.appendChild(notice); }
+    notice.textContent = message;
+    notice.hidden = false;
+    clearTimeout(notice.dismissTimer);
+    notice.dismissTimer = setTimeout(() => { notice.hidden = true; }, 6000);
+}
 
-    // 在請求前設置 loading 狀態
-    const loadingDiv = document.createElement('div');
-    loadingDiv.className = 'api-loading-indicator';
-    loadingDiv.textContent = '載入中...';
-    document.body.appendChild(loadingDiv);
+async function fetchWithAuth(url, options = {}) {
+    try {
+        const response = await fetch(url, {...options, credentials:'include'});
+        if (response.redirected && new URL(response.url).pathname === '/login') { window.location.href='/login'; throw new Error('請重新登入'); }
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) throw new Error(`伺服器回應格式錯誤（${response.status}）`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.error || `請求失敗（${response.status}）`);
+        return data;
+    } catch (error) {
+        showApiError(error.message || '連線失敗，請稍後再試');
+        throw error;
+    }
+}
 
-    return fetch(url, {
-        ...options,
-        credentials: 'include' // 確保發送 Cookie
-    })
-        .then(response => {
-            // 移除 loading 狀態
-            document.body.removeChild(loadingDiv);
-
-            if (response.status === 401) {
-                // 認證失敗，重定向到登入頁面
-                console.error('API認證失敗，重定向到登入頁面');
-                window.location.href = '/login';
-                return Promise.reject('認證失敗');
-            }
-
-            if (!response.ok) {
-                // 處理其他HTTP錯誤
-                console.error(`API請求失敗：${response.status} ${response.statusText}`);
-                return response.text().then(text => {
-                    try {
-                        // 嘗試解析錯誤響應為JSON
-                        const errorJson = JSON.parse(text);
-                        console.error('API錯誤詳情：', errorJson);
-                        return Promise.reject(`API錯誤：${errorJson.error || '未知錯誤'}`);
-                    } catch (e) {
-                        // 如果不是JSON，則返回原始文本
-                        console.error('API錯誤詳情：', text);
-                        return Promise.reject(`API錯誤：${text || response.statusText || '未知錯誤'}`);
-                    }
-                });
-            }
-
-            // 正常響應，嘗試解析為JSON
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json().then(data => {
-                    console.log(`API響應成功，數據:`, data);
-                    return data;
-                }).catch(error => {
-                    console.error('解析API響應為JSON時出錯：', error);
-                    return null; // 返回null替代解析失敗的JSON
-                });
-            } else {
-                console.log('API響應不是JSON格式');
-                return response.text().then(text => {
-                    console.log('API響應文本:', text);
-                    try {
-                        return JSON.parse(text);
-                    } catch (e) {
-                        return text;
-                    }
-                });
-            }
-        })
-        .catch(error => {
-            // 移除 loading 狀態（如果還存在）
-            if (document.body.contains(loadingDiv)) {
-                document.body.removeChild(loadingDiv);
-            }
-
-            // 網絡錯誤處理
-            console.error('API請求出錯：', error);
-            // 如果是我們已知的錯誤（字符串形式），直接重新拋出
-            if (typeof error === 'string') {
-                return Promise.reject(error);
-            }
-            // 其他錯誤（例如網絡問題）
-            return Promise.reject(`API調用失敗：${error.message || '未知網絡錯誤'}`);
-        });
+function tableMessage(id, message) {
+    const body = document.getElementById(id); if (!body) return;
+    const row = document.createElement('tr'); const cell = document.createElement('td');
+    cell.colSpan = 8; cell.textContent = message; row.append(cell); body.replaceChildren(row);
 }
 
 // 獲取用戶列表
@@ -493,7 +392,7 @@ function fetchUsers() {
             renderUserTable(users);
             fillUserDropdown(users); // 填充使用者下拉選單
         })
-        .catch(error => console.error('獲取用戶失敗:', error));
+        .catch(error => { tableMessage('userTableBody', '無法載入使用者'); console.error('獲取用戶失敗:', error); });
 }
 
 // 獲取服務列表
@@ -503,7 +402,7 @@ function fetchServices() {
             renderServiceTable(services);
             fillServiceDropdown(services); // 填充服務下拉選單
         })
-        .catch(error => console.error('獲取服務失敗:', error));
+        .catch(error => { tableMessage('serviceTableBody', '無法載入服務'); console.error('獲取服務失敗:', error); });
 }
 
 // 填充使用者下拉選單
@@ -606,7 +505,7 @@ function fetchTokens(userId = '', serviceId = '', status = '') {
             // 若篩選下拉仍無選項，嘗試從 token 列表反補
             syncTokenFiltersFromTokens(list);
         })
-        .catch(error => console.error('獲取Token失敗:', error));
+        .catch(error => { tableMessage('tokenTableBody', '無法載入 Token'); console.error('獲取Token失敗:', error); });
 }
 
 // 應用目前的 Token 篩選器
@@ -623,6 +522,8 @@ function clearTokenFilters() {
     const serviceSelect = document.getElementById('filterTokenService');
     if (userSelect) userSelect.value = '';
     if (serviceSelect) serviceSelect.value = '';
+    const statusSelect = document.getElementById('filterTokenStatus');
+    if (statusSelect) statusSelect.value = '';
     fetchTokens();
 }
 
@@ -657,12 +558,22 @@ function syncTokenFiltersFromTokens(tokens) {
     }
 }
 
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+}
+
+async function copyTableValue(button, value) {
+    try { await navigator.clipboard.writeText(value); const label=button.textContent; button.textContent='已複製'; setTimeout(()=>{button.textContent=label;},2000); }
+    catch { showApiError('複製失敗，請檢查瀏覽器剪貼簿權限。'); }
+}
+
 // 渲染Token表格
 function renderTokenTable(tokens) {
     const tableBody = document.getElementById('tokenTableBody');
     if (!tableBody) return;
 
     tableBody.innerHTML = '';
+    if (!tokens.length) { tableMessage('tokenTableBody', '目前沒有Token'); return; }
     tokens.forEach(token => {
         const row = document.createElement('tr');
 
@@ -695,16 +606,16 @@ function renderTokenTable(tokens) {
         row.innerHTML = `
             <td>${token.id}</td>
             <td class="td-token">
-                <div class="token-text" title="${token.token_value}">${displayToken}</div>
+                <div class="token-text" title="${escapeHtml(token.token_value)}">${escapeHtml(displayToken)}</div>
                 <div class="token-actions">
-                    <button class="btn btn-info btn-sm" onclick="copyToken('${token.token_value}')">複製</button>
-                    <button class="btn btn-secondary btn-sm" onclick="copyRequestUrl('${serviceName}', '${token.token_value}')">複製請求網址</button>
+                    <button class="btn btn-info btn-sm" data-action="copy-token">複製</button>
+                    <button class="btn btn-secondary btn-sm" data-action="copy-url">複製請求網址</button>
                 </div>
             </td>
-            <td>${token.user ? token.user.username : '未知使用者'}</td>
-            <td>${token.service ? token.service.name : '未知服務'}</td>
-            <td class="td-description">${token.description ? token.description : '-'}</td>
-            <td>${token.expires_at ? new Date(token.expires_at).toLocaleString() : '-'}</td>
+            <td>${escapeHtml(token.user ? token.user.username : '未知使用者')}</td>
+            <td>${escapeHtml(token.service ? token.service.name : '未知服務')}</td>
+            <td class="td-description">${escapeHtml(token.description ? token.description : '-')}</td>
+            <td>${token.expires_at ? (isPermanent ? '永久有效' : new Date(token.expires_at).toLocaleString()) : '-'}</td>
             <td>${statusHtml}</td>
             <td>
                 <button class="btn btn-primary btn-sm" onclick="editToken(${token.id})">編輯</button>
@@ -712,72 +623,35 @@ function renderTokenTable(tokens) {
                 <button class="btn btn-danger btn-sm" onclick="deleteToken(${token.id})">刪除</button>
             </td>
         `;
+        row.querySelector('[data-action="copy-token"]').addEventListener('click', event => copyTableValue(event.currentTarget, token.token_value));
+        row.querySelector('[data-action="copy-url"]').addEventListener('click', event => {
+            const service = encodeURIComponent(serviceName);
+            const value = encodeURIComponent(token.token_value);
+            copyTableValue(event.currentTarget, `${window.location.origin}/use/${service}/${value}/`);
+        });
         tableBody.appendChild(row);
     });
 }
 
-// 複製請求網址，例如: https://host/use/<service>/<token>/ (仍相容 /api/)
-function copyRequestUrl(serviceName, tokenValue) {
-    if (!tokenValue) {
-        console.error('Token 值不存在，無法複製請求網址');
-        return;
-    }
-
-    const url = serviceName
-        ? `${window.location.origin}/use/${encodeURIComponent(serviceName)}/${encodeURIComponent(tokenValue)}/`
-        : `${window.location.origin}/use/${tokenValue}/`;
-
-    navigator.clipboard?.writeText(url).then(() => {
-        // 找到對應按鈕並變色提示（不使用 alert）
-        const selector = `button[onclick="copyRequestUrl('${serviceName}', '${tokenValue}')"]`;
-        const buttons = document.querySelectorAll(selector);
-        if (buttons.length > 0) {
-            const button = buttons[0];
-            const originalText = button.textContent;
-            button.textContent = 'copied!';
-            button.classList.remove('btn-secondary');
-            button.classList.add('btn-success');
-            setTimeout(() => {
-                button.textContent = originalText;
-                button.classList.remove('btn-success');
-                button.classList.add('btn-secondary');
-            }, 2000);
-        }
-        console.log('已複製請求網址: ' + url);
-    }).catch(err => {
-        console.error('複製請求網址失敗', err);
-        // 如果有按鈕，顯示失敗樣式短暫提示
-        const selector = `button[onclick="copyRequestUrl('${serviceName}', '${tokenValue}')"]`;
-        const buttons = document.querySelectorAll(selector);
-        if (buttons.length > 0) {
-            const button = buttons[0];
-            const originalText = button.textContent;
-            button.textContent = 'failed';
-            button.classList.remove('btn-secondary');
-            button.classList.add('btn-danger');
-            setTimeout(() => {
-                button.textContent = originalText;
-                button.classList.remove('btn-danger');
-                button.classList.add('btn-secondary');
-            }, 2000);
-        }
-    });
+// 忽略過期回應，避免重複建立或覆蓋較新的圖表。
+function beginChartUpdate(name) {
+    window.chartRevisions ||= {};
+    window.chartRevisions[name] = (window.chartRevisions[name] || 0) + 1;
+    return window.chartRevisions[name];
 }
 
 // 更新每日請求數量趨勢圖
 function updateDailyRequestsChart() {
+    const chartRevision = beginChartUpdate('dailyRequests');
     // 獲取選定的時間範圍
     const days = document.getElementById('dailyRequestsTimeRange').value || 30;
 
-    fetchWithAuth(`${API_BASE_URL}/stats/recent?days=${days}`)
+    fetchWithAuth(`${API_BASE_URL}/stats/dashboard-recent?days=${days}`)
         .then(data => {
             const dailyRequestsCanvas = document.getElementById('dailyRequestsChart');
             if (!dailyRequestsCanvas) return;
 
             // 若已存在圖表，則先銷毀
-            if (window.charts.dailyRequests) {
-                window.charts.dailyRequests.destroy();
-            }
 
             // 確保數據按日期排序
             data.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -785,17 +659,12 @@ function updateDailyRequestsChart() {
             const dates = data.map(d => d.date);
             const counts = data.map(d => d.count);
 
-            // 確保數據包含今天
-            const today = new Date().toISOString().split('T')[0];
-            if (!dates.includes(today)) {
-                dates.push(today);
-                counts.push(0); // 預設值為0
-            }
-
             console.log('每日請求數據:', { dates, counts });
 
             // 創建新圖表
-            window.charts.dailyRequests = new Chart(dailyRequestsCanvas, {
+            if (window.chartRevisions.dailyRequests !== chartRevision) return;
+                if (window.charts.dailyRequests) window.charts.dailyRequests.destroy();
+                window.charts.dailyRequests = new Chart(dailyRequestsCanvas, {
                 type: 'line',
                 data: {
                     labels: dates,
@@ -817,8 +686,7 @@ function updateDailyRequestsChart() {
                         tooltip: {
                             callbacks: {
                                 title: function (tooltipItems) {
-                                    const date = new Date(tooltipItems[0].label);
-                                    return date.toLocaleDateString('zh-TW');
+                                    return tooltipItems[0].label;
                                 }
                             }
                         }
@@ -854,11 +722,12 @@ function renderUserTable(users) {
     if (!tableBody) return;
 
     tableBody.innerHTML = '';
+    if (!users.length) { tableMessage('userTableBody', '目前沒有使用者'); return; }
     users.forEach(user => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${user.id}</td>
-            <td>${user.username}</td>
+            <td>${escapeHtml(user.username)}</td>
             <td>${user.is_active ? '啟用' : '停用'}</td>
             <td>
                 <button class="btn btn-primary btn-sm" onclick="editUser(${user.id})">編輯</button>
@@ -878,13 +747,14 @@ function renderServiceTable(services) {
     if (!tableBody) return;
 
     tableBody.innerHTML = '';
+    if (!services.length) { tableMessage('serviceTableBody', '目前沒有服務'); return; }
     services.forEach(service => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${service.id}</td>
-            <td>${service.name}</td>
-            <td>${service.description}</td>
-            <td>${service.base_url}</td>
+            <td>${escapeHtml(service.name)}</td>
+            <td>${escapeHtml(service.description)}</td>
+            <td>${escapeHtml(service.base_url)}</td>
             <td>${service.is_active ? '啟用' : '停用'}</td>
             <td>
                 <button class="btn btn-primary btn-sm" onclick="editService(${service.id})">編輯</button>
@@ -900,72 +770,8 @@ function renderServiceTable(services) {
 
 // 渲染最近統計數據
 function renderRecentStats(stats) {
-    // 確保有數據
-    if (!stats || !stats.length) {
-        console.warn('沒有可用的統計數據');
-        return;
-    }
-
-    console.log('正在渲染統計數據:', stats);
-
-    // 計算總API請求數 - 修正加總邏輯
-    let totalRequests = 0;
-    stats.forEach(day => {
-        // 確保day.count是有效數字
-        if (day && typeof day.count === 'number') {
-            totalRequests += day.count;
-        }
-    });
-
-    // 取得最大的用戶、服務和Token數量
-    const totalUsers = Math.max(...stats.map(day => day.user_count || 0));
-    const totalServices = Math.max(...stats.map(day => day.service_count || 0));
-    const totalTokens = Math.max(...stats.map(day => day.token_count || 0));
-
-    console.log('計算的統計結果:', { totalRequests, totalUsers, totalServices, totalTokens });
-
-    // 更新統計卡片
-    const elemTotalRequests = document.getElementById('totalRequests');
-    const elemActiveUsers = document.getElementById('activeUsers');
-    const elemActiveServices = document.getElementById('activeServices');
-    const elemActiveTokens = document.getElementById('activeTokens');
-
-    if (elemTotalRequests) elemTotalRequests.textContent = totalRequests;
-    if (elemActiveUsers) elemActiveUsers.textContent = totalUsers;
-    if (elemActiveServices) elemActiveServices.textContent = totalServices;
-    if (elemActiveTokens) elemActiveTokens.textContent = totalTokens;
-
-    // 顯示簡易趨勢：比較最近7天與之前7天
-    function calcRollingChange(arr, field, windowDays = 7) {
-        if (!arr || arr.length < windowDays * 2) return null;
-        const len = arr.length;
-        const lastWindow = arr.slice(len - windowDays, len);
-        const prevWindow = arr.slice(len - (2 * windowDays), len - windowDays);
-        const sum = (a) => a.reduce((s, it) => s + (it[field] || 0), 0);
-        const lastSum = sum(lastWindow);
-        const prevSum = sum(prevWindow);
-        if (prevSum === 0) return null;
-        const pct = ((lastSum - prevSum) / prevSum) * 100;
-        return { pct: pct, lastSum, prevSum };
-    }
-
-    function setTrend(elemId, change) {
-        const el = document.getElementById(elemId);
-        if (!el) return;
-        if (!change) {
-            el.textContent = '';
-            return;
-        }
-        const up = change.pct >= 0;
-        const arrow = up ? '▲' : '▼';
-        const cls = up ? 'text-success' : 'text-danger';
-        el.innerHTML = `<span class="${cls}">${arrow} ${Math.abs(change.pct).toFixed(1)}% (近7天)</span>`;
-    }
-
-    setTrend('totalRequestsTrend', calcRollingChange(stats, 'count', 7));
-    setTrend('activeUsersTrend', calcRollingChange(stats.map(d => ({ user_count: d.user_count || 0 })), 'user_count', 7));
-    setTrend('activeServicesTrend', calcRollingChange(stats.map(d => ({ service_count: d.service_count || 0 })), 'service_count', 7));
-    setTrend('activeTokensTrend', calcRollingChange(stats.map(d => ({ token_count: d.token_count || 0 })), 'token_count', 7));
+    const element = document.getElementById('totalRequests');
+    if (element) element.textContent = Array.isArray(stats) && stats.length ? stats.reduce((sum, day) => sum + (Number(day.count) || 0), 0) : '—';
 }
 
 // 渲染服務使用量統計圖表
@@ -1052,13 +858,11 @@ function renderServicesUsageChart(stats) {
 
 // 更新用戶服務使用量圖表
 function updateUserServiceChart() {
+    const chartRevision = beginChartUpdate('userService');
     const userId = document.getElementById('userServiceSelector').value || 'all';
     const chartType = window.chartTypes.userService || 'bar';
     const userServiceCanvas = document.getElementById('userServiceChart');
     if (!userServiceCanvas) return;
-    if (window.charts.userService) {
-        window.charts.userService.destroy();
-    }
 
     if (userId === 'all') {
         // 顯示全部使用者的服務使用量
@@ -1079,10 +883,10 @@ function updateUserServiceChart() {
 
                     // 計算日期範圍
                     const cutoffDate = new Date();
-                    cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
-                    cutoffDate.setHours(0, 0, 0, 0);
+                    cutoffDate.setUTCDate(cutoffDate.getUTCDate() - parseInt(days) + 1);
+                    cutoffDate.setUTCHours(0, 0, 0, 0);
                     const today = new Date();
-                    today.setHours(0, 0, 0, 0);
+                    today.setUTCHours(0, 0, 0, 0);
                     const dateRange = generateDateRange(cutoffDate, today);
 
                     // 準備數據集
@@ -1104,7 +908,9 @@ function updateUserServiceChart() {
                         });
                     });
 
-                    window.charts.userService = new Chart(userServiceCanvas, {
+                    if (window.chartRevisions.userService !== chartRevision) return;
+                if (window.charts.userService) window.charts.userService.destroy();
+                window.charts.userService = new Chart(userServiceCanvas, {
                         type: 'line',
                         data: { labels: dateRange, datasets },
                         options: {
@@ -1122,6 +928,8 @@ function updateUserServiceChart() {
                 const colors = getPalette(labels.length);
                 const total = counts.reduce((acc, val) => acc + val, 0);
 
+                if (window.chartRevisions.userService !== chartRevision) return;
+                if (window.charts.userService) window.charts.userService.destroy();
                 window.charts.userService = new Chart(userServiceCanvas, {
                     type: chartType,
                     data: {
@@ -1163,11 +971,11 @@ function updateUserServiceChart() {
 
                 // 計算日期範圍（過去X天到今天）
                 const cutoffDate = new Date();
-                cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
-                cutoffDate.setHours(0, 0, 0, 0);
+                cutoffDate.setUTCDate(cutoffDate.getUTCDate() - parseInt(days) + 1);
+                cutoffDate.setUTCHours(0, 0, 0, 0);
 
                 const today = new Date();
-                today.setHours(0, 0, 0, 0);
+                today.setUTCHours(0, 0, 0, 0);
 
                 // 產生完整的日期範圍，包含今日
                 const dateRange = generateDateRange(cutoffDate, today);
@@ -1194,6 +1002,8 @@ function updateUserServiceChart() {
                 });
 
                 // 創建圖表
+                if (window.chartRevisions.userService !== chartRevision) return;
+                if (window.charts.userService) window.charts.userService.destroy();
                 window.charts.userService = new Chart(userServiceCanvas, {
                     type: 'line',
                     data: { labels: dateRange, datasets },
@@ -1204,8 +1014,7 @@ function updateUserServiceChart() {
                             tooltip: {
                                 callbacks: {
                                     title: function (tooltipItems) {
-                                        const date = new Date(tooltipItems[0].label);
-                                        return date.toLocaleDateString('zh-TW');
+                                        return tooltipItems[0].label;
                                     }
                                 }
                             }
@@ -1252,7 +1061,9 @@ function updateUserServiceChart() {
             // 只有在 datalabels 插件正確載入且 id 為 'datalabels' 時才啟用
             const includeDatalabels = (chartType === 'pie' || chartType === 'doughnut') && (window.ChartDataLabels && window.ChartDataLabels.id === 'datalabels');
 
-            window.charts.userService = new Chart(userServiceCanvas, {
+            if (window.chartRevisions.userService !== chartRevision) return;
+                if (window.charts.userService) window.charts.userService.destroy();
+                window.charts.userService = new Chart(userServiceCanvas, {
                 type: chartType,
                 data: {
                     labels,
@@ -1302,15 +1113,13 @@ function updateUserServiceChart() {
 
 // 更新使用者Token使用量圖表
 function updateUserTokenChart() {
+    const chartRevision = beginChartUpdate('userToken');
     const userId = document.getElementById('userTokenSelector').value || 'all';
 
     const chartType = window.chartTypes.userToken || 'bar';
     const userTokenCanvas = document.getElementById('userTokenChart');
     if (!userTokenCanvas) return;
 
-    if (window.charts.userToken) {
-        window.charts.userToken.destroy();
-    }
 
     if (chartType === 'line') {
         // 折線圖：以時間為橫軸，每個token一條線
@@ -1324,10 +1133,10 @@ function updateUserTokenChart() {
                 Promise.all(promises).then(results => {
                     // 計算日期範圍
                     const cutoffDate = new Date();
-                    cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
-                    cutoffDate.setHours(0, 0, 0, 0);
+                    cutoffDate.setUTCDate(cutoffDate.getUTCDate() - parseInt(days) + 1);
+                    cutoffDate.setUTCHours(0, 0, 0, 0);
                     const today = new Date();
-                    today.setHours(0, 0, 0, 0);
+                    today.setUTCHours(0, 0, 0, 0);
                     const dateRange = generateDateRange(cutoffDate, today);
 
                     const datasets = [];
@@ -1348,7 +1157,9 @@ function updateUserTokenChart() {
                         });
                     });
 
-                    window.charts.userToken = new Chart(userTokenCanvas, {
+                    if (window.chartRevisions.userToken !== chartRevision) return;
+                if (window.charts.userToken) window.charts.userToken.destroy();
+                window.charts.userToken = new Chart(userTokenCanvas, {
                         type: 'line',
                         data: { labels: dateRange, datasets },
                         options: { responsive: true, maintainAspectRatio: false }
@@ -1376,11 +1187,11 @@ function updateUserTokenChart() {
 
                 // 計算日期範圍（過去X天到今天）
                 const cutoffDate = new Date();
-                cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
-                cutoffDate.setHours(0, 0, 0, 0);
+                cutoffDate.setUTCDate(cutoffDate.getUTCDate() - parseInt(days) + 1);
+                cutoffDate.setUTCHours(0, 0, 0, 0);
 
                 const today = new Date();
-                today.setHours(0, 0, 0, 0);
+                today.setUTCHours(0, 0, 0, 0);
 
                 // 產生完整的日期範圍，包含今日
                 const dateRange = generateDateRange(cutoffDate, today);
@@ -1407,6 +1218,8 @@ function updateUserTokenChart() {
                 });
 
                 // 創建圖表
+                if (window.chartRevisions.userToken !== chartRevision) return;
+                if (window.charts.userToken) window.charts.userToken.destroy();
                 window.charts.userToken = new Chart(userTokenCanvas, {
                     type: 'line',
                     data: { labels: dateRange, datasets },
@@ -1417,8 +1230,7 @@ function updateUserTokenChart() {
                             tooltip: {
                                 callbacks: {
                                     title: function (tooltipItems) {
-                                        const date = new Date(tooltipItems[0].label);
-                                        return date.toLocaleDateString('zh-TW');
+                                        return tooltipItems[0].label;
                                     }
                                 }
                             }
@@ -1459,7 +1271,9 @@ function updateUserTokenChart() {
             // 只有在 datalabels 插件正確載入且 id 為 'datalabels' 時才啟用
             const includeDatalabels = (chartType === 'pie' || chartType === 'doughnut') && (window.ChartDataLabels && window.ChartDataLabels.id === 'datalabels');
 
-            window.charts.userToken = new Chart(userTokenCanvas, {
+            if (window.chartRevisions.userToken !== chartRevision) return;
+                if (window.charts.userToken) window.charts.userToken.destroy();
+                window.charts.userToken = new Chart(userTokenCanvas, {
                 type: chartType,
                 data: {
                     labels: labels,
@@ -1513,6 +1327,7 @@ function updateUserTokenChart() {
 
 // 更新Token隨時間使用量圖表
 function updateTokenTimeChart() {
+    const chartRevision = beginChartUpdate('tokenTime');
     const tokenId = document.getElementById('tokenTimeSelector').value || 'all';
 
     // 獲取選定的時間範圍
@@ -1521,9 +1336,6 @@ function updateTokenTimeChart() {
     const tokenTimeCanvas = document.getElementById('tokenTimeChart');
     if (!tokenTimeCanvas) return;
 
-    if (window.charts.tokenTime) {
-        window.charts.tokenTime.destroy();
-    }
 
     if (tokenId === 'all') {
         // 聚合所有 Token 的時間序列並畫多條線
@@ -1533,10 +1345,10 @@ function updateTokenTimeChart() {
             Promise.all(promises).then(results => {
                 // 計算日期範圍
                 const cutoffDate = new Date();
-                cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
-                cutoffDate.setHours(0, 0, 0, 0);
+                cutoffDate.setUTCDate(cutoffDate.getUTCDate() - parseInt(days) + 1);
+                cutoffDate.setUTCHours(0, 0, 0, 0);
                 const today = new Date();
-                today.setHours(0, 0, 0, 0);
+                today.setUTCHours(0, 0, 0, 0);
                 const dateRange = generateDateRange(cutoffDate, today);
 
                 const datasets = [];
@@ -1557,6 +1369,8 @@ function updateTokenTimeChart() {
                     });
                 });
 
+                if (window.chartRevisions.tokenTime !== chartRevision) return;
+                if (window.charts.tokenTime) window.charts.tokenTime.destroy();
                 window.charts.tokenTime = new Chart(tokenTimeCanvas, {
                     type: 'line',
                     data: { labels: dateRange, datasets },
@@ -1574,17 +1388,14 @@ function updateTokenTimeChart() {
             if (!tokenTimeCanvas) return;
 
             // 若已存在圖表，則先銷毀
-            if (window.charts.tokenTime) {
-                window.charts.tokenTime.destroy();
-            }
 
             // 計算日期範圍（過去X天到今天）
             const cutoffDate = new Date();
-            cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
-            cutoffDate.setHours(0, 0, 0, 0);
+            cutoffDate.setUTCDate(cutoffDate.getUTCDate() - parseInt(days) + 1);
+            cutoffDate.setUTCHours(0, 0, 0, 0);
 
             const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            today.setUTCHours(0, 0, 0, 0);
 
             // 產生完整的日期範圍，包含今日
             const dateRange = generateDateRange(cutoffDate, today);
@@ -1598,7 +1409,9 @@ function updateTokenTimeChart() {
             const counts = dateRange.map(date => dateMap[date] || 0);
 
             // 創建圖表
-            window.charts.tokenTime = new Chart(tokenTimeCanvas, {
+            if (window.chartRevisions.tokenTime !== chartRevision) return;
+                if (window.charts.tokenTime) window.charts.tokenTime.destroy();
+                window.charts.tokenTime = new Chart(tokenTimeCanvas, {
                 type: 'line',
                 data: {
                     labels: dateRange,
@@ -1620,8 +1433,7 @@ function updateTokenTimeChart() {
                         tooltip: {
                             callbacks: {
                                 title: function (tooltipItems) {
-                                    const date = new Date(tooltipItems[0].label);
-                                    return date.toLocaleDateString('zh-TW');
+                                    return tooltipItems[0].label;
                                 }
                             }
                         }
@@ -1653,6 +1465,7 @@ function updateTokenTimeChart() {
 
 // 更新服務隨時間使用量圖表
 function updateServiceTimeChart() {
+    const chartRevision = beginChartUpdate('serviceTime');
     const serviceId = document.getElementById('serviceTimeSelector').value || 'all';
 
     // 獲取選定的時間範圍
@@ -1661,9 +1474,6 @@ function updateServiceTimeChart() {
     const serviceTimeCanvas = document.getElementById('serviceTimeChart');
     if (!serviceTimeCanvas) return;
 
-    if (window.charts.serviceTime) {
-        window.charts.serviceTime.destroy();
-    }
 
     if (serviceId === 'all') {
         // 取得所有服務的時間序列，然後依服務畫多條線
@@ -1673,10 +1483,10 @@ function updateServiceTimeChart() {
             Promise.all(promises).then(results => {
                 // 日期範圍
                 const cutoffDate = new Date();
-                cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
-                cutoffDate.setHours(0, 0, 0, 0);
+                cutoffDate.setUTCDate(cutoffDate.getUTCDate() - parseInt(days) + 1);
+                cutoffDate.setUTCHours(0, 0, 0, 0);
                 const today = new Date();
-                today.setHours(0, 0, 0, 0);
+                today.setUTCHours(0, 0, 0, 0);
                 const dateRange = generateDateRange(cutoffDate, today);
 
                 const datasets = [];
@@ -1698,6 +1508,8 @@ function updateServiceTimeChart() {
                     });
                 });
 
+                if (window.chartRevisions.serviceTime !== chartRevision) return;
+                if (window.charts.serviceTime) window.charts.serviceTime.destroy();
                 window.charts.serviceTime = new Chart(serviceTimeCanvas, {
                     type: 'line',
                     data: { labels: dateRange, datasets },
@@ -1715,17 +1527,14 @@ function updateServiceTimeChart() {
             if (!serviceTimeCanvas) return;
 
             // 若已存在圖表，則先銷毀
-            if (window.charts.serviceTime) {
-                window.charts.serviceTime.destroy();
-            }
 
             // 計算日期範圍（過去X天到今天）
             const cutoffDate = new Date();
-            cutoffDate.setDate(cutoffDate.getDate() - parseInt(days) + 1);
-            cutoffDate.setHours(0, 0, 0, 0);
+            cutoffDate.setUTCDate(cutoffDate.getUTCDate() - parseInt(days) + 1);
+            cutoffDate.setUTCHours(0, 0, 0, 0);
 
             const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            today.setUTCHours(0, 0, 0, 0);
 
             // 產生完整的日期範圍，包含今日
             const dateRange = generateDateRange(cutoffDate, today);
@@ -1739,7 +1548,9 @@ function updateServiceTimeChart() {
             const counts = dateRange.map(date => dateMap[date] || 0);
 
             // 創建圖表
-            window.charts.serviceTime = new Chart(serviceTimeCanvas, {
+            if (window.chartRevisions.serviceTime !== chartRevision) return;
+                if (window.charts.serviceTime) window.charts.serviceTime.destroy();
+                window.charts.serviceTime = new Chart(serviceTimeCanvas, {
                 type: 'line',
                 data: {
                     labels: dateRange,
@@ -1761,8 +1572,7 @@ function updateServiceTimeChart() {
                         tooltip: {
                             callbacks: {
                                 title: function (tooltipItems) {
-                                    const date = new Date(tooltipItems[0].label);
-                                    return date.toLocaleDateString('zh-TW');
+                                    return tooltipItems[0].label;
                                 }
                             }
                         }
@@ -1885,28 +1695,16 @@ function getPalette(count) {
 
 // 生成日期範圍，確保今天是最後一個點
 function generateDateRange(startDate, endDate) {
-    const dateArray = [];
-    let currentDate = new Date(startDate);
-
-    // 確保日期格式一致
-    currentDate.setHours(0, 0, 0, 0);
-    const endDateTime = new Date(endDate);
-    endDateTime.setHours(0, 0, 0, 0);
-
-    // 生成日期範圍直到今天
-    while (currentDate <= endDateTime) {
-        dateArray.push(currentDate.toISOString().split('T')[0]);
-        currentDate.setDate(currentDate.getDate() + 1);
+    const result = [];
+    const current = new Date(startDate);
+    const end = new Date(endDate);
+    current.setUTCHours(0, 0, 0, 0);
+    end.setUTCHours(0, 0, 0, 0);
+    while (current <= end) {
+        result.push(current.toISOString().slice(0, 10));
+        current.setUTCDate(current.getUTCDate() + 1);
     }
-
-    // 確保最後一個是今天
-    const todayStr = new Date().toISOString().split('T')[0];
-    if (dateArray.length > 0 && dateArray[dateArray.length - 1] !== todayStr) {
-        dateArray.push(todayStr);
-    }
-
-    console.log("生成的日期範圍:", dateArray, "最後一個點是:", dateArray[dateArray.length - 1]);
-    return dateArray;
+    return result;
 }
 
 // 初始化圖表
@@ -2096,14 +1894,13 @@ function toggleServiceStatus(id, status) {
         .catch(error => console.error('更新服務狀態失敗:', error));
 }
 
-function deleteService(id) {
-    if (confirm('確定要刪除此服務嗎？')) {
-        fetchWithAuth(`${API_BASE_URL}/services/${id}`, {
-            method: 'DELETE'
-        })
-            .then(() => fetchServices())
-            .catch(error => console.error('刪除服務失敗:', error));
-    }
+async function deleteService(id) {
+    try {
+        const tokens = await fetchWithAuth(`${API_BASE_URL}/service-tokens/${id}`);
+        if (!confirm(`確定刪除此服務？相關的 ${tokens.length} 個 Token 將永久失效。`)) return;
+        await fetchWithAuth(`${API_BASE_URL}/services/${id}`, {method:'DELETE'});
+        fetchServices();
+    } catch (error) { console.error('刪除服務失敗:', error); }
 }
 
 // Token操作函數
@@ -2169,7 +1966,7 @@ function editToken(id) {
             // 設置過期時間
             if (!isPermanent) {
                 const expiryDate = new Date(token.expires_at);
-                document.getElementById('editTokenExpires').value = expiryDate.toISOString().slice(0, 16);
+                document.getElementById('editTokenExpires').value = new Date(expiryDate.getTime() - expiryDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
             }
 
             // 根據是否永久有效顯示/隱藏過期時間欄位
@@ -2187,8 +1984,6 @@ function updateToken() {
 
     const requestBody = {
         is_permanent: isPermanent,
-        // 保留原有的啟用狀態，不再從表單獲取
-        is_active: true,
         description: description
     };
 
@@ -2202,7 +1997,7 @@ function updateToken() {
         requestBody.expires_at = new Date(expiresAt).toISOString();
     }
 
-    fetchWithAuth(`${API_BASE_URL}/tokens/${id}`, {
+    fetchWithAuth(`${API_BASE_URL}/tokens/${id}/details`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json'
@@ -2269,34 +2064,6 @@ function toggleEditExpiryDateField() {
 // 關閉模態窗口
 function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
-}
-
-// 複製Token
-function copyToken(tokenValue) {
-    navigator.clipboard.writeText(tokenValue)
-        .then(() => {
-            // 找到被點擊的按鈕
-            const buttons = document.querySelectorAll(`button[onclick="copyToken('${tokenValue}')"]`);
-            if (buttons.length > 0) {
-                const button = buttons[0];
-                const originalText = button.textContent;
-
-                // 修改按鈕文字和樣式
-                button.textContent = 'copied!';
-                button.classList.remove('btn-info');
-                button.classList.add('btn-success');
-
-                // 2秒後恢復原樣
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.classList.remove('btn-success');
-                    button.classList.add('btn-info');
-                }, 2000);
-            }
-        })
-        .catch(error => {
-            console.error('複製Token失敗:', error);
-        });
 }
 
 // 登出
