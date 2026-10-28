@@ -3,6 +3,9 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"unicode/utf8"
+
+	"gorm.io/gorm"
 
 	"infra-manager/db"
 	"infra-manager/models"
@@ -44,6 +47,10 @@ func CreateService(c *gin.Context) {
 		return
 	}
 
+	if utf8.RuneCountInString(service.Type) > 64 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "服務類型最多 64 字"})
+		return
+	}
 	result := db.DB.Create(&service)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "無法創建服務"})
@@ -64,10 +71,11 @@ func UpdateService(c *gin.Context) {
 	}
 
 	var updatedService struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		BaseURL     string `json:"base_url"`
-		IsActive    bool   `json:"is_active"`
+		Name        string  `json:"name"`
+		Description string  `json:"description"`
+		Type        *string `json:"type"`
+		BaseURL     string  `json:"base_url"`
+		IsActive    bool    `json:"is_active"`
 	}
 
 	if err := c.ShouldBindJSON(&updatedService); err != nil {
@@ -75,13 +83,22 @@ func UpdateService(c *gin.Context) {
 		return
 	}
 
-	// 更新服務資訊
-	db.DB.Model(&service).Updates(models.Service{
-		Name:        updatedService.Name,
-		Description: updatedService.Description,
-		BaseURL:     updatedService.BaseURL,
-		IsActive:    updatedService.IsActive,
-	})
+	if updatedService.Type != nil && utf8.RuneCountInString(*updatedService.Type) > 64 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "服務類型最多 64 字"})
+		return
+	}
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&service).Updates(models.Service{Name: updatedService.Name, Description: updatedService.Description, BaseURL: updatedService.BaseURL, IsActive: updatedService.IsActive}).Error; err != nil {
+			return err
+		}
+		if updatedService.Type != nil {
+			return tx.Model(&service).Update("type", *updatedService.Type).Error
+		}
+		return nil
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "無法更新服務"})
+		return
+	}
 
 	c.JSON(http.StatusOK, service)
 }

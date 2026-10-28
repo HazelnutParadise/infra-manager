@@ -9,6 +9,7 @@ import (
 	"infra-manager/db"
 	"infra-manager/middlewares"
 	"infra-manager/models"
+	"infra-manager/services"
 )
 
 func main() {
@@ -20,6 +21,7 @@ func main() {
 	fmt.Println("資料庫結構已更新")
 
 	middlewares.StartLogCleanup()
+	services.StartDashboardSnapshots(db.DB)
 
 	// 設定埠號
 	port := os.Getenv("PORT")

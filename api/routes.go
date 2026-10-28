@@ -103,6 +103,7 @@ func SetupRouter() *gin.Engine {
 		admin.GET("/services/:id", controllers.GetService)
 		admin.POST("/services", controllers.CreateService)
 		admin.PUT("/services/:id", controllers.UpdateService)
+		admin.PUT("/services/:id/details", controllers.UpdateServiceDetails)
 		admin.DELETE("/services/:id", controllers.DeleteService)
 		admin.PATCH("/services/:id/status", controllers.ToggleServiceStatus)
 
@@ -128,6 +129,7 @@ func SetupRouter() *gin.Engine {
 			statsRoutes.GET("/dashboard-responses", controllers.GetDashboardResponseChart)
 			statsRoutes.GET("/dashboard-services", controllers.GetDashboardServiceUsage)
 			statsRoutes.GET("/dashboard-service-details", controllers.GetDashboardServiceDetail)
+			statsRoutes.GET("/dashboard-snapshot", controllers.GetDashboardSnapshotComparison)
 			statsRoutes.GET("/services", controllers.GetServicesUsageStats)
 
 			// 服務相關統計

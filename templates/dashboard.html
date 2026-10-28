@@ -64,7 +64,7 @@
                 </div>
                 <div class="stat-card compact">
                     <div class="stat-icon"><i class="far fa-clock"></i></div>
-                    <div class="stat-card-body"><div class="stat-title">即將到期 Token</div><div class="stat-value" id="expiringTokenCount">—</div><div class="stat-trend">7 天內到期</div></div>
+                    <div class="stat-card-body"><div class="stat-title">即將到期 Token</div><div class="stat-value" id="expiringTokenCount">—</div><div class="stat-trend">7 天內到期</div><div class="stat-trend" id="expiringTokensTrend"></div></div>
                 </div>
             </div>
         </div>
@@ -93,7 +93,7 @@
 
             <section class="overview-panel"><div class="overview-panel-heading"><h2>即將到期的 Token</h2><a href="/tokens">管理 Token →</a></div><p class="overview-caption">未來 30 天內到期且目前啟用</p><div class="overview-table-scroll"><table class="overview-table"><thead><tr><th>使用者</th><th>服務</th><th>備註</th><th>到期時間</th><th>剩餘</th><th>操作</th></tr></thead><tbody id="expiringTokens" aria-live="polite"><tr><td colspan="6">載入中…</td></tr></tbody></table></div></section>
         </div>
-        <div class="overview-worklist"><section class="overview-panel"><div class="overview-panel-heading"><h2>服務使用情況</h2><a href="/services">管理服務 →</a></div><p class="overview-caption">所選期間通過驗證的請求；人數與 Token 數為期間內有使用的數量</p><div class="overview-table-scroll"><table class="overview-table"><thead><tr><th>服務</th><th>請求</th><th>正常回應率</th><th>使用者數</th><th>Token 數</th><th>最後使用</th><th>操作</th></tr></thead><tbody id="serviceOverview"><tr><td colspan="7">載入中…</td></tr></tbody></table></div></section><section class="overview-panel"><div class="overview-panel-heading"><h2>近期失敗</h2><a href="/failures">查看全部 →</a></div><p class="overview-caption">顯示最新 5 筆失敗</p><div id="recentFailures" class="overview-list" aria-live="polite">載入中…</div></section></div>
+        <div class="overview-worklist"><section class="overview-panel"><div class="overview-panel-heading"><h2>服務使用情況</h2><a href="/services">管理服務 →</a></div><p class="overview-caption">所選期間通過驗證的請求；人數與 Token 數為期間內有使用的數量</p><div class="overview-table-scroll"><table class="overview-table"><thead><tr><th>服務</th><th>類型</th><th>請求</th><th>正常回應率</th><th>使用者數</th><th>Token 數</th><th>最後使用</th><th>操作</th></tr></thead><tbody id="serviceOverview"><tr><td colspan="8">載入中…</td></tr></tbody></table></div></section><section class="overview-panel"><div class="overview-panel-heading"><h2>近期失敗</h2><a href="/failures">查看全部 →</a></div><p class="overview-caption">顯示最新 5 筆失敗</p><div id="recentFailures" class="overview-list" aria-live="polite">載入中…</div></section></div>
         <div class="charts-section">
             <p class="overview-caption">以下服務、使用者與 Token 的每日趨勢以 UTC 日期計算；上方自訂日期不影響這些圖表。</p>
             <!-- 時間趨勢（並排顯示：服務、Token） -->

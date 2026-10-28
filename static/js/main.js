@@ -708,6 +708,7 @@ function renderServiceTable(services) {
         row.innerHTML = `
             <td>${service.id}</td>
             <td>${escapeHtml(service.name)}</td>
+            <td>${escapeHtml(service.type || "未設定")}</td>
             <td>${escapeHtml(service.description)}</td>
             <td>${escapeHtml(service.base_url)}</td>
             <td>${service.is_active ? '啟用' : '停用'}</td>
@@ -1780,6 +1781,7 @@ function showAddServiceModal() {
 function addService() {
     const name = document.getElementById('newServiceName').value;
     const description = document.getElementById('newServiceDescription').value;
+    const type = document.getElementById('newServiceType').value;
     const baseUrl = document.getElementById('newServiceBaseUrl').value;
 
     fetchWithAuth(`${API_BASE_URL}/services`, {
@@ -1790,6 +1792,7 @@ function addService() {
         body: JSON.stringify({
             name: name,
             description: description,
+            type: type,
             base_url: baseUrl,
             is_active: true
         })
@@ -1808,6 +1811,7 @@ function editService(id) {
             document.getElementById('editServiceID').value = service.id;
             document.getElementById('editServiceName').value = service.name;
             document.getElementById('editServiceDescription').value = service.description;
+            document.getElementById('editServiceType').value = service.type || '';
             document.getElementById('editServiceBaseUrl').value = service.base_url;
 
             document.getElementById('editServiceModal').style.display = 'block';
@@ -1820,9 +1824,10 @@ function updateService() {
     const id = document.getElementById('editServiceID').value;
     const name = document.getElementById('editServiceName').value;
     const description = document.getElementById('editServiceDescription').value;
+    const type = document.getElementById('editServiceType').value;
     const baseUrl = document.getElementById('editServiceBaseUrl').value;
 
-    fetchWithAuth(`${API_BASE_URL}/services/${id}`, {
+    fetchWithAuth(`${API_BASE_URL}/services/${id}/details`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json'
@@ -1830,8 +1835,8 @@ function updateService() {
         body: JSON.stringify({
             name: name,
             description: description,
-            base_url: baseUrl,
-            is_active: true // 保留原有狀態，不再從表單獲取
+            type: type,
+            base_url: baseUrl
         })
     })
         .then(() => {

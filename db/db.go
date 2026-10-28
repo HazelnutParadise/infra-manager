@@ -30,6 +30,10 @@ func InitDB() {
 		log.Fatalf("無法連接到資料庫: %v", err)
 	}
 
+	if err := ApplyDashboardMigration(DB); err != nil {
+		log.Fatalf("dashboard migration failed: %v", err)
+	}
+
 	// 遷移資料庫結構
 	if err := DB.AutoMigrate(&models.User{}, &models.Service{}, &models.Token{}, &models.AccessLog{}, &models.Admin{}, &models.RequestFailure{}); err != nil {
 		log.Fatalf("database migration failed: %v", err)

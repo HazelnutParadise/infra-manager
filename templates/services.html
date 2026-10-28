@@ -36,6 +36,7 @@
                         <tr>
                             <th>ID</th>
                             <th>名稱</th>
+                            <th>類型</th>
                             <th>描述</th>
                             <th>基礎URL</th>
                             <th>狀態</th>
@@ -58,6 +59,10 @@
             <div class="form-group">
                 <label for="newServiceName">服務名稱</label>
                 <input type="text" id="newServiceName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="newServiceType">類型</label>
+                <input type="text" id="newServiceType" class="form-control" maxlength="64" placeholder="例如 Kubernetes 或資料庫">
             </div>
             <div class="form-group">
                 <label for="newServiceDescription">描述</label>
@@ -84,6 +89,10 @@
             <div class="form-group">
                 <label for="editServiceName">服務名稱</label>
                 <input type="text" id="editServiceName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="editServiceType">類型</label>
+                <input type="text" id="editServiceType" class="form-control" maxlength="64" placeholder="例如 Kubernetes 或資料庫">
             </div>
             <div class="form-group">
                 <label for="editServiceDescription">描述</label>

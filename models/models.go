@@ -22,6 +22,7 @@ type Service struct {
 	ID          uint        `gorm:"primaryKey" json:"id"`
 	Name        string      `gorm:"unique;not null" json:"name"`
 	Description string      `json:"description"`
+	Type        string      `gorm:"not null;default:''" json:"type"`
 	BaseURL     string      `gorm:"not null" json:"base_url"`
 	IsActive    bool        `gorm:"default:true" json:"is_active"`
 	Tokens      []Token     `gorm:"foreignKey:ServiceID" json:"tokens,omitempty"`

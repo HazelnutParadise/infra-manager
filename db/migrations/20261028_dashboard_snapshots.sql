@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS dashboard_snapshots (
+ date TEXT PRIMARY KEY NOT NULL,
+ observed_at DATETIME NOT NULL,
+ active_users INTEGER NOT NULL DEFAULT 0,
+ active_services INTEGER NOT NULL DEFAULT 0,
+ active_tokens INTEGER NOT NULL DEFAULT 0,
+ expiring_tokens INTEGER NOT NULL DEFAULT 0
+);
