@@ -6,6 +6,7 @@ import (
 	"infra-manager/middlewares"
 	"infra-manager/services"
 	"net/http"
+	"strings"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -17,6 +18,19 @@ var SERVICE_NAME = consts.SERVICE_NAME
 // SetupRouter 設置所有路由
 func SetupRouter() *gin.Engine {
 	r := gin.Default()
+
+	// 管理介面與靜態資源每次都取最新版本，不影響代理服務。
+	r.Use(func(c *gin.Context) {
+		path := c.Request.URL.Path
+		if path != "/robots.txt" && path != "/use" && !strings.HasPrefix(path, "/use/") && path != "/api" && !strings.HasPrefix(path, "/api/") {
+			c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+			if strings.HasPrefix(path, "/static/") {
+				c.Request.Header.Del("If-Modified-Since")
+				c.Request.Header.Del("If-None-Match")
+			}
+		}
+		c.Next()
+	})
 
 	// 設置 Session 存儲
 	store := cookie.NewStore([]byte("infra_manager_secret"))
